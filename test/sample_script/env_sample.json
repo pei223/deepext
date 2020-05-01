@@ -1,0 +1,11 @@
+{
+  "pascal_voc_2012_root": "",
+  "cifar10_root": "",
+  "imagenet_root": "",
+  "stl10_root": "",
+  "singan_root": "",
+  "singan_test_image": "",
+  "pascal_voc_2012_detection_root": "",
+  "coco_detection_data_root": "",
+  "coco_detection_ann_root": ""
+}
