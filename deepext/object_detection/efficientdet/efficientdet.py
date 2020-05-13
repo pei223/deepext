@@ -48,6 +48,10 @@ class EfficientDetector(BaseModel):
         return float(loss)
 
     def predict(self, inputs):
+        """
+        :param inputs:
+        :return: Batch size * classes * bounding boxes(variable length)
+        """
         self._model.eval()
         self._model.is_training = False
         batch_size = inputs.shape[0]

@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Iterable, Tuple
+
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -29,6 +31,38 @@ def transparent_only_black(img: Image.Image, alpha: float) -> Image.Image:
             newData.append(item[:3] + (alpha,))
     result_img.putdata(newData)
     return result_img
+
+
+def draw_bounding_boxes_with_name_tag(origin_image: np.ndarray, bounding_boxes: Iterable[Iterable[float]], text: str,
+                                      is_bbox_norm=False, thickness=1, color=(0, 0, 255)):
+    image = origin_image.copy()
+    height, width = image.shape[:2]
+    for bounding_box in bounding_boxes:
+        if len(bounding_box) < 4:
+            continue
+        x_min, y_min, x_max, y_max = bounding_box[:4]
+        if is_bbox_norm:
+            x_min *= width
+            x_max *= width
+            y_min *= height
+            y_max *= height
+        x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+        image = cv2.rectangle(image, (x_min, y_min, x_max, y_max), color, thickness)
+        image = draw_text_with_background(image, text=text, offsets=(x_min, y_min), background_color=color)
+    return image
+
+
+def draw_text_with_background(origin_img: np.ndarray, text, offsets: Tuple[int, int], background_color=(255, 255, 255),
+                              text_color=(0, 0, 0), margin_px=5, font_scale=0.7):
+    img = origin_img.copy()
+    font = cv2.FONT_HERSHEY_DUPLEX
+    text_width, text_height = cv2.getTextSize(text, font, font_scale, 1)[0]
+    background_coors = (offsets,
+                        (int(offsets[0] + text_width + margin_px * 2), int(offsets[1] - text_height - margin_px * 2)))
+    img = cv2.rectangle(img, background_coors[0], background_coors[1], background_color, cv2.FILLED)
+    img = cv2.putText(img, text, (offsets[0] + margin_px, offsets[1] - margin_px), font, font_scale, text_color, 1,
+                      cv2.LINE_AA)
+    return img
 
 
 def default_color_palette() -> List[int]:

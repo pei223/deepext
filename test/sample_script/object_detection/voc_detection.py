@@ -4,7 +4,7 @@ from torchvision.transforms import ToTensor, Resize, RandomHorizontalFlip, Rando
 import json
 
 from deepext import UNet, PSPNet, ResPSPNet, ResUNet, Trainer, EfficientDetector, ObjectDetectionCollator, \
-    VisualizeObjectDetectionResult, M2Det, SSD
+    VisualizeRandomObjectDetectionResult, M2Det, SSD
 from deepext.layers import segmentation_accuracy
 from deepext.utils import *
 
@@ -34,6 +34,7 @@ class_index_dict = {
     "train": 18,
     "tvmonitor": 19,
 }
+label_names = list(class_index_dict.keys())
 
 with open("../.env.json") as file:
     settings = json.load(file)
@@ -57,8 +58,9 @@ model = EfficientDetector(num_classes=n_classes, lr=1e-4, network="efficientdet-
 
 trainer: Trainer = Trainer(model)
 trainer.fit(data_loader=data_loader, epochs=epochs,
-            lr_scheduler_func=LearningRateScheduler(epochs, power=3),
+            lr_scheduler_func=LearningRateScheduler(epochs, power=1),
             callbacks=[
-                VisualizeObjectDetectionResult(model, img_size, voc_dataset, per_epoch=1, out_dir="../temp")],
+                VisualizeRandomObjectDetectionResult(model, img_size, voc_dataset, per_epoch=1, out_dir="../temp",
+                                                     label_names=label_names)],
             test_dataloader=data_loader, metric_func_ls=[])
 model.save_weight(".efficientdet.model")

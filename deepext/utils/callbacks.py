@@ -1,12 +1,9 @@
-from typing import List, Iterable, Tuple
 from torchvision.transforms import ToPILImage
 from torch.utils.data import Dataset
-import numpy as np
 import torch
 import math
 import matplotlib.pyplot as plt
 import seaborn as sns
-import cv2
 
 from .image_utils import *
 from ..base import SegmentationModel, BaseModel
@@ -73,9 +70,9 @@ class GenerateAttentionMapCallback:
         plt.close('all')
 
 
-class VisualizeObjectDetectionResult:
-    def __init__(self, model: BaseModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str, per_epoch: int = 10,
-                 pred_color=(0, 0, 255), teacher_color=(0, 255, 0)):
+class VisualizeRandomObjectDetectionResult:
+    def __init__(self, model: BaseModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str,
+                 label_names: List[str], per_epoch: int = 10, pred_color=(0, 0, 255), teacher_color=(0, 255, 0)):
         """
         :param model:
         :param img_size: (H, W)
@@ -92,6 +89,7 @@ class VisualizeObjectDetectionResult:
         self._per_epoch = per_epoch
         self._out_dir = out_dir
         self._img_size = img_size
+        self._label_names = label_names
 
     def __call__(self, epoch: int):
         if (epoch + 1) % self._per_epoch != 0:
@@ -104,27 +102,34 @@ class VisualizeObjectDetectionResult:
         image = image.detach().cpu().numpy() * 255
         image = image.transpose(1, 2, 0)
 
-        for class_index in range(len(predict_result)):
-            if predict_result[class_index] is None or len(predict_result[class_index]) == 0:
-                continue
-            image = draw_bounding_boxes(image, predict_result[class_index], color=self._pred_color)
-        image = draw_bounding_boxes(image, teacher_bboxes, color=self._teacher_color)
+        image = self._draw_result_bboxes(image, bboxes_by_class=predict_result)
+        image = self._draw_teacher_bboxes(image, teacher_bboxes=teacher_bboxes)
         cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)
 
+    def _draw_teacher_bboxes(self, image: np.ndarray, teacher_bboxes: List[Tuple[float, float, float, float, int]]):
+        """
+        :param image:
+        :param teacher_bboxes: List of [x_min, y_min, x_max, y_max, label]
+        :return:
+        """
+        if teacher_bboxes is None or len(teacher_bboxes) == 0:
+            return image
+        for bbox in teacher_bboxes:
+            image = draw_bounding_boxes_with_name_tag(image, [bbox], color=self._teacher_color,
+                                                      text=self._label_names[bbox[-1]])
+        return image
 
-def draw_bounding_boxes(origin_image: np.ndarray, bounding_boxes: Iterable[Iterable[int]], is_bbox_norm=False,
-                        thickness=1,
-                        color=(0, 0, 255)):
-    image = origin_image.copy()
-    height, width = image.shape[:2]
-    for bounding_box in bounding_boxes:
-        if len(bounding_box) < 4:
-            continue
-        x_min, y_min, x_max, y_max = bounding_box[:4]
-        if is_bbox_norm:
-            x_min *= width
-            x_max *= width
-            y_min *= height
-            y_max *= height
-        cv2.rectangle(image, (int(x_min), int(y_min)), (int(x_max), int(y_max)), color, thickness)
-    return image
+    def _draw_result_bboxes(self, image: np.ndarray, bboxes_by_class: List[List[float]]):
+        """
+        :param image:
+        :param bboxes_by_class: [labels, N, coordinate(x_min, y_min, x_max, y_max, any)]
+        :return:
+        """
+        if bboxes_by_class is None:
+            return image
+        for i, bboxes in enumerate(bboxes_by_class):
+            if bboxes is None or len(bboxes) == 0:
+                continue
+            image = draw_bounding_boxes_with_name_tag(image, bboxes, color=self._pred_color,
+                                                      text=self._label_names[i])
+        return image
