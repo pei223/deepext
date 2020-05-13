@@ -45,5 +45,5 @@ class Trainer:
         metric_ls = []
         for x, teacher in data_loader:
             result = self._model.predict(x)
-            metric_ls.append(metric_func(result, teacher.numpy()))
+            metric_ls.append(metric_func(result, teacher))
         return mean(metric_ls)

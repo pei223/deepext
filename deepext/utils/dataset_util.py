@@ -5,6 +5,7 @@ from torch.utils.data.dataset import Subset
 from pathlib import Path
 from PIL import Image
 import numpy as np
+import random
 
 
 class SimpleGANDataSet(Dataset):
@@ -44,6 +45,9 @@ class VOCAnnotationTransform:
         width, height = int(target["annotation"]["size"]["width"]), int(target["annotation"]["size"]["height"])
         points = ["xmin", "ymin", "xmax", "ymax"]
         obj_list = target["annotation"]["object"]
+        adjust_width_rate = self._width / width
+        adjust_height_rate = self._height / height
+
         if not isinstance(obj_list, list):
             obj_list = [obj_list, ]
         for obj in obj_list:
@@ -52,7 +56,7 @@ class VOCAnnotationTransform:
             bbox = []
             for i, point in enumerate(points):
                 coordinate = int(bbox_obj[point]) - 1
-                coordinate = coordinate / width if i % 2 == 0 else coordinate / height
+                coordinate = coordinate * adjust_width_rate if i % 2 == 0 else coordinate * adjust_height_rate
                 bbox.append(coordinate)
             class_index = self._class_index_dict[class_name]
             bbox.append(class_index)
@@ -65,6 +69,7 @@ class ObjectDetectionCollator:
     N * 5(x_min, y_min, x_max, y_max, class label)の1アノテーションデータをTensorに変換する.
     すべてのBounding boxを0・-1埋めで固定長にする.
     """
+
     def __init__(self, padding_val=-1):
         self._padding_val = padding_val
 
@@ -92,3 +97,20 @@ class ObjectDetectionCollator:
                 new_batch_bboxes[i, j, 3] = batch_bboxes[i][j][3]
                 new_batch_bboxes[i, j, 4] = batch_bboxes[i][j][4]
         return new_batch_bboxes
+
+
+class LabelAndDataTransforms:
+    LABEL_INDEX = 1
+    DATA_INDEX = 2
+
+    def __init__(self, transform_sets=List[Tuple[any, any]]):
+        self._transform_sets = transform_sets
+
+    def __call__(self, img, label):
+        for i in range(len(self._transform_sets)):
+            seed = random.randint(0, 2 ** 32)
+            random.seed(seed)
+            data_transform, label_transform = self._transform_sets[i]
+            img = data_transform(img) if data_transform is not None else img
+            label = label_transform(label) if label_transform is not None else label
+        return img, label

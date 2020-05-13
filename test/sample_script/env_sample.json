@@ -6,6 +6,7 @@
   "singan_root": "",
   "singan_test_image": "",
   "pascal_voc_2012_detection_root": "",
+  "pascal_voc_2007_detection_root": "",
   "coco_detection_data_root": "",
   "coco_detection_ann_root": ""
 }

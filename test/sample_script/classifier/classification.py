@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, Dataset
 import torchvision
 from torchvision.transforms import ToTensor, Resize, RandomHorizontalFlip, RandomRotation, Compose, RandomResizedCrop
 import json
-from deepext import AttentionBranchNetwork, Trainer, random_subset_dataset
+from deepext import AttentionBranchNetwork, Trainer, random_subset_dataset, EfficientNet
 from deepext.layers import classification_accuracy
 
 from deepext.utils import *
@@ -45,10 +45,12 @@ if dataset_type == "stl10":
 elif dataset_type == "cifar10":
     data_loader, dataset, n_classes, test_data_loader = cifar10_setting(preset_transforms)
 
-model: AttentionBranchNetwork = AttentionBranchNetwork(n_classes=n_classes, first_layer_channels=32, lr=1e-4).cuda()
+# model: AttentionBranchNetwork = AttentionBranchNetwork(n_classes=n_classes, first_layer_channels=32, lr=1e-4).cuda()
+model: EfficientNet = EfficientNet(num_classes=n_classes, lr=1e-3)
+
 # model.load_weight(".abn.model")
 trainer: Trainer = Trainer(model)
 trainer.fit(data_loader, epochs=epochs, lr_scheduler_func=LearningRateScheduler(epochs),
-            callbacks=[GenerateAttentionMapCallback(model=model, output_dir="../temp", per_epoch=1, dataset=dataset)],
+            # callbacks=[GenerateAttentionMapCallback(model=model, output_dir="../temp", per_epoch=1, dataset=dataset)],
             test_dataloader=test_data_loader, metric_func_ls=[classification_accuracy, ])
 model.save_weight(".abn.model")

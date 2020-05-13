@@ -24,7 +24,6 @@ class EfficientDetector(BaseModel):
             self._optimizer, patience=3, verbose=True)
         self._score_threshold = score_threshold
         self._max_detections = max_detections
-        self.i = 0
 
     def train_batch(self, inputs, teachers):
         self._model.train()
@@ -32,11 +31,12 @@ class EfficientDetector(BaseModel):
         self._model.freeze_bn()
         self._optimizer.zero_grad()
 
-        images = torch.Tensor(inputs).cuda().float()
-        annotations = torch.Tensor(teachers).cuda()
+        images = try_cuda(torch.Tensor(inputs)).float()
+        annotations = try_cuda(torch.Tensor(teachers))
         classification_loss, regression_loss = self._model([images, annotations])
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()
+        print(classification_loss.item(), regression_loss.item())
         loss = classification_loss + regression_loss
         if bool(loss == 0):
             return 0.0
@@ -44,8 +44,7 @@ class EfficientDetector(BaseModel):
         torch.nn.utils.clip_grad_norm_(self._model.parameters(), 0.1)
         self._optimizer.step()
         self._optimizer.zero_grad()
-        self._scheduler.step(loss.item())
-        print(loss.item())
+        # self._scheduler.step(loss.item())
         return float(loss)
 
     def predict(self, inputs):
@@ -78,8 +77,7 @@ class EfficientDetector(BaseModel):
                     # copy detections to all_detections
                     for label in range(self._num_classes):
                         all_detections[i][label] = image_detections[image_detections[:, -1] == label, :-1]
-
-        return all_detections
+        return np.asarray(all_detections)
 
     def save_weight(self, save_path):
         dict_to_save = {

@@ -1,4 +1,4 @@
-from typing import List, Iterable
+from typing import List, Iterable, Tuple
 from torchvision.transforms import ToPILImage
 from torch.utils.data import Dataset
 import numpy as np
@@ -39,11 +39,12 @@ class GenerateSegmentationImageCallback:
 
 
 class LearningRateScheduler:
-    def __init__(self, max_epoch: int):
+    def __init__(self, max_epoch: int, power=0.9):
         self._max_epoch = max_epoch
+        self._power = power
 
     def __call__(self, epoch: int):
-        return math.pow((1 - epoch / self._max_epoch), 0.9)
+        return math.pow((1 - epoch / self._max_epoch), self._power)
 
 
 class GenerateAttentionMapCallback:
@@ -73,14 +74,24 @@ class GenerateAttentionMapCallback:
 
 
 class VisualizeObjectDetectionResult:
-    def __init__(self, model: BaseModel, dataset: Dataset, out_dir: str, per_epoch: int = 10, pred_color=(0, 0, 255),
-                 teacher_color=(0, 255, 0)):
+    def __init__(self, model: BaseModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str, per_epoch: int = 10,
+                 pred_color=(0, 0, 255), teacher_color=(0, 255, 0)):
+        """
+        :param model:
+        :param img_size: (H, W)
+        :param dataset:
+        :param out_dir:
+        :param per_epoch:
+        :param pred_color:
+        :param teacher_color:
+        """
         self._model = model
         self._dataset = dataset
         self._pred_color = pred_color
         self._teacher_color = teacher_color
         self._per_epoch = per_epoch
         self._out_dir = out_dir
+        self._img_size = img_size
 
     def __call__(self, epoch: int):
         if (epoch + 1) % self._per_epoch != 0:
@@ -96,8 +107,8 @@ class VisualizeObjectDetectionResult:
         for class_index in range(len(predict_result)):
             if predict_result[class_index] is None or len(predict_result[class_index]) == 0:
                 continue
-            image = draw_bounding_boxes(image, predict_result[class_index], is_bbox_norm=False, color=self._pred_color)
-        image = draw_bounding_boxes(image, teacher_bboxes, is_bbox_norm=True, color=self._teacher_color)
+            image = draw_bounding_boxes(image, predict_result[class_index], color=self._pred_color)
+        image = draw_bounding_boxes(image, teacher_bboxes, color=self._teacher_color)
         cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)
 
 

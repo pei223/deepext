@@ -8,7 +8,6 @@ from .module import RegressionModel, ClassificationModel, Anchors, ClipBoxes, BB
 from torchvision.ops import nms
 from .losses import FocalLoss
 
-
 MODEL_MAP = {
     'efficientdet-d0': 'efficientnet-b0',
     'efficientdet-d1': 'efficientnet-b1',
@@ -76,6 +75,7 @@ class EfficientDet(nn.Module):
             scores_over_thresh = (scores > self.threshold)[0, :, 0]
 
             if scores_over_thresh.sum() == 0:
+                print('No boxes to NMS')
                 # no boxes to NMS, just return
                 return [torch.zeros(0), torch.zeros(0), torch.zeros(0, 4)]
             classification = classification[:, scores_over_thresh, :]
