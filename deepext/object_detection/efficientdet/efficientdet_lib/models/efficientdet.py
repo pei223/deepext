@@ -29,10 +29,13 @@ class EfficientDet(nn.Module):
                  D_class=3,
                  is_training=True,
                  threshold=0.01,
-                 iou_threshold=0.5):
+                 iou_threshold=0.5,
+                 backbone_path: str = None):
         super(EfficientDet, self).__init__()
-        # self.backbone = EfficientNet.from_pretrained(MODEL_MAP[network])
-        self.backbone = EfficientNet.from_name(MODEL_MAP[network])
+        self.backbone: EfficientNet = EfficientNet.from_name(MODEL_MAP[network])
+        if backbone_path:
+            checkpoint = torch.load(backbone_path)
+            self.backbone.load_state_dict(checkpoint)
         self.is_training = is_training
         self.neck = BIFPN(in_channels=self.backbone.get_list_features()[-5:],
                           out_channels=W_bifpn,
@@ -57,6 +60,11 @@ class EfficientDet(nn.Module):
         self.criterion = FocalLoss()
 
     def forward(self, inputs):
+        """
+        :param inputs: predicting (channels, height, width) or
+                        training (batch size, channels, height, width), (batch size, bounding box count, height, width)
+        :return: predicting (BBox, ), (BBox, ), (BBox, 4) or training (float, float)
+        """
         if self.is_training:
             inputs, annotations = inputs
         else:

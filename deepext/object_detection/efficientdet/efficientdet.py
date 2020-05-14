@@ -1,4 +1,5 @@
-import torch.optim as optim
+from typing import Tuple
+from torch import optim
 import torch
 import numpy as np
 
@@ -9,23 +10,26 @@ from ...utils.tensor_util import try_cuda
 
 
 class EfficientDetector(BaseModel):
-
-    def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.2, max_detections=100):
+    def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.2, max_detections=100,
+                 backbone_path: str = None):
         super().__init__()
-        self._model = EfficientDet(num_classes=num_classes,
+        self._model = try_cuda(EfficientDet(num_classes=num_classes,
                                    network=network,
                                    W_bifpn=EFFICIENTDET[network]['W_bifpn'],
                                    D_bifpn=EFFICIENTDET[network]['D_bifpn'],
-                                   D_class=EFFICIENTDET[network]['D_class']).cuda()
+                                   D_class=EFFICIENTDET[network]['D_class'], backbone_path=backbone_path))
         self._num_classes = num_classes
         self._network = network
         self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
-        self._scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self._optimizer, patience=3, verbose=True)
+        self._scheduler = optim.lr_scheduler.ReduceLROnPlateau(self._optimizer, patience=3, verbose=True)
         self._score_threshold = score_threshold
         self._max_detections = max_detections
 
-    def train_batch(self, inputs, teachers):
+    def train_batch(self, inputs, teachers) -> float:
+        """
+        :param inputs: (batch size, channels, height, width)
+        :param teachers: (batch size, bounding box count, height, width)
+        """
         self._model.train()
         self._model.is_training = True
         self._model.freeze_bn()
@@ -47,10 +51,10 @@ class EfficientDetector(BaseModel):
         # self._scheduler.step(loss.item())
         return float(loss)
 
-    def predict(self, inputs):
+    def predict(self, inputs) -> np.ndarray:
         """
-        :param inputs:
-        :return: Batch size * classes * bounding boxes(variable length)
+        :param inputs: (batch size, channels, height, width)
+        :return: (Batch size, classes, bounding boxes by class(variable length))
         """
         self._model.eval()
         self._model.is_training = False

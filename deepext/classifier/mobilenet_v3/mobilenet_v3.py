@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
+import numpy as np
 
 from deepext.base.base_model import BaseModel
 from .mobilenetv3_lib.model import mobilenetv3
@@ -22,7 +23,11 @@ class MobileNetV3(BaseModel):
             self._model.cuda()
             self._criterion.cuda()
 
-    def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor):
+    def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
+        """
+        :param train_x: (batch size, channel, height, width)
+        :param teacher: (batch size, )
+        """
         self._model.train()
         train_x = try_cuda(train_x).float()
         teacher = try_cuda(teacher).long()
@@ -36,7 +41,11 @@ class MobileNetV3(BaseModel):
         self._optimizer.step()
         return loss.item()
 
-    def predict(self, inputs):
+    def predict(self, inputs) -> np.ndarray:
+        """
+        :param inputs: (batch size, channel, height, width)
+        :return: (batch size, class)
+        """
         self._model.eval()
         with torch.no_grad():
             inputs = try_cuda(inputs).float()

@@ -37,6 +37,10 @@ class PSPNet(SegmentationModel, nn.Module):
         return FeatureMapBackBone(in_channels=in_channels, first_layer_channels=first_layer_channels)
 
     def forward(self, x):
+        """
+        :param x: (batch size, channels, height, width)
+        :return:  (batch size, class, height, width),  (batch size, class, height, width)
+        """
         x = try_cuda(x)
         x = self._backbone(x)
         auxiliary_output = self._auxiliary_decoder(x)
@@ -46,8 +50,8 @@ class PSPNet(SegmentationModel, nn.Module):
 
     def predict(self, x: torch.Tensor) -> np.ndarray:
         """
-        :param x:
-        :return: PIL形式のnumpy配列
+        :param x: (batch size, channels, height, width)
+        :return: (batch size, class, height, width)
         """
         assert x.ndim == 4
         self.eval()
@@ -61,6 +65,10 @@ class PSPNet(SegmentationModel, nn.Module):
         init_weights_func(self._decoder)
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
+        """
+        :param train_x: (batch size, channels, height, width)
+        :param teacher: (batch size, class, height, width)
+        """
         self.train()
         train_x = try_cuda(train_x)
         teacher = try_cuda(teacher)
@@ -72,7 +80,6 @@ class PSPNet(SegmentationModel, nn.Module):
         self._optimizer.step()
         # result = np.argmax(pred.cpu().detach().numpy(), axis=1).astype("uint32")
         # print(np.bincount(result.flatten(), minlength=20), loss.item())
-
         # print(segmentation_accuracy(pred.argmax(1), teacher.argmax(1)), loss.item())
         return loss.item()
 

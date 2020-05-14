@@ -1,3 +1,4 @@
+from typing import Tuple
 from deepext.base import BaseModel
 from ..layers import *
 from ..utils import *
@@ -40,7 +41,11 @@ class AttentionBranchNetwork(nn.Module, BaseModel):
         self.perception_branch.add_module("gap", GlobalAveragePooling())
         self._optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        :param x: (batch size, channels, height, width)
+        :return: (batch size, class), (batch size, class), heatmap (batch size, 1, height, width)
+        """
         origin_feature = self.feature_extractor(x)
         attention_output, attention_map = self.attention_branch(origin_feature)
         # 特徴量・Attention mapのSkip connection
@@ -51,7 +56,11 @@ class AttentionBranchNetwork(nn.Module, BaseModel):
         perception_output = F.softmax(perception_output, dim=1)
         return perception_output, attention_output, attention_map
 
-    def train_batch(self, inputs: torch.Tensor, teachers: torch.Tensor):
+    def train_batch(self, inputs: torch.Tensor, teachers: torch.Tensor) -> float:
+        """
+        :param inputs: (batch size, channels, height, width)
+        :param teachers: (batch size, class)
+        """
         self.train()
         inputs, teachers = try_cuda(inputs).float(), try_cuda(teachers).long()
         self._optimizer.zero_grad()

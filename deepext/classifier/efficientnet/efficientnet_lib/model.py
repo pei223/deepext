@@ -187,7 +187,10 @@ class EfficientNetPredictor(nn.Module):
         return x
 
     def forward(self, inputs):
-        """ Calls extract_features to extract features, applies final linear layer, and returns logits. """
+        """
+        :param inputs: (batch size, channels, height, width)
+        :return: (batch size, class)
+        """
         bs = inputs.size(0)
         # Convolution layers
         x = self.extract_features(inputs)

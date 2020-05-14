@@ -23,7 +23,11 @@ class EfficientNet(BaseModel):
             self._model.cuda()
             self._criterion.cuda()
 
-    def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor):
+    def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
+        """
+        :param train_x: (batch size, channel, height, width)
+        :param teacher: (batch size, )
+        """
         self._model.train()
         train_x = try_cuda(train_x).float()
         teacher = try_cuda(teacher).long()
@@ -38,6 +42,10 @@ class EfficientNet(BaseModel):
         return loss.item()
 
     def predict(self, inputs):
+        """
+        :param inputs: (batch size, channel, height, width)
+        :return: (batch size, class)
+        """
         self._model.eval()
         with torch.no_grad():
             inputs = try_cuda(inputs).float()

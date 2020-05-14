@@ -29,6 +29,10 @@ class UNet(SegmentationModel, nn.Module):
         self._loss_func = SegmentationTypedLoss(loss_type=loss_type)
 
     def forward(self, x):
+        """
+        :param x: (batch size, channels, height, width)
+        :return:  (batch size, class, height, width)
+        """
         x = try_cuda(x)
         enc1 = self._encoder_layer1(x)
         enc2 = self._encoder_layer2(enc1)
@@ -50,7 +54,7 @@ class UNet(SegmentationModel, nn.Module):
     def predict(self, x: torch.Tensor) -> np.ndarray:
         """
         :param x:
-        :return: PIL形式のnumpy配列
+        :return: (batch size, class, height, width)
         """
         assert x.ndim == 4
         self.eval()
@@ -66,6 +70,10 @@ class UNet(SegmentationModel, nn.Module):
         return UpBlock(n_input_channels, n_out_channels, is_output_layer)
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
+        """
+        :param train_x: (batch size, channels, height, width)
+        :param teacher: (batch size, class, height, width)
+        """
         self.train()
         train_x = try_cuda(train_x)
         teacher = try_cuda(teacher)

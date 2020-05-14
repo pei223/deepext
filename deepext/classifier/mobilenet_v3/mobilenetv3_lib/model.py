@@ -201,6 +201,10 @@ class MobileNetV3(nn.Module):
         self._initialize_weights()
 
     def forward(self, x):
+        """
+        :param x: (batch size, channels, height, width)
+        :return: (batch size, class)
+        """
         x = self.features(x)
         x = x.mean(3).mean(2)
         x = self.classifier(x)

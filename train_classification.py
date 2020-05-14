@@ -43,7 +43,9 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float):
     if MODEL_EFFICIENT_NET == model_type:
-        return EfficientNet(num_classes=dataset_setting.n_classes, lr=lr)
+        m = EfficientNet(num_classes=dataset_setting.n_classes, lr=lr)
+        m.load_weight("C:/Users/ip-miyake/Downloads/efficientnet-b0-355c32eb.pth", weight_only=True)
+        return m
     elif MODEL_ATTENTION_BRANCH_NETWORK == model_type:
         return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=lr))
     elif MODEL_MOBILENET == model_type:

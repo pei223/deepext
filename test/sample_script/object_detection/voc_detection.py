@@ -54,7 +54,9 @@ data_loader = DataLoader(voc_dataset, batch_size=8, shuffle=True, collate_fn=Obj
 
 # model = M2Det(num_classes=n_classes, input_size=320)
 # model = SSD(num_classes=n_classes, input_size=300)
-model = EfficientDetector(num_classes=n_classes, lr=1e-4, network="efficientdet-d0")
+model = EfficientDetector(num_classes=n_classes, lr=1e-4, network="efficientdet-d0",
+                          backbone_path="C:/Users/ip-miyake/Downloads/efficientnet-b0-355c32eb.pth")
+model.load_weight("C:/Users/ip-miyake/Downloads/checkpoint_VOC_efficientdet-d0_268.pth")
 
 trainer: Trainer = Trainer(model)
 trainer.fit(data_loader=data_loader, epochs=epochs,

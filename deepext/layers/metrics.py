@@ -25,7 +25,8 @@ def segmentation_accuracy(pred: np.ndarray, teacher: np.ndarray) -> float:
     :return:
     """
     pred = torch.from_numpy(pred)
-    teacher = torch.from_numpy(teacher)
+    if isinstance(teacher, np.ndarray):
+        teacher = torch.from_numpy(teacher)
     assert pred.shape[-1] == teacher.shape[-1] and pred.shape[-2] == teacher.shape[-2], "教師データと推論結果のサイズは同じにしてください"
     pred = pred.argmax(dim=1)
     teacher = teacher.argmax(dim=1)
