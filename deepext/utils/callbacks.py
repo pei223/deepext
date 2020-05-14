@@ -102,8 +102,8 @@ class VisualizeRandomObjectDetectionResult:
         image = image.detach().cpu().numpy() * 255
         image = image.transpose(1, 2, 0)
 
-        image = self._draw_result_bboxes(image, bboxes_by_class=predict_result)
         image = self._draw_teacher_bboxes(image, teacher_bboxes=teacher_bboxes)
+        image = self._draw_result_bboxes(image, bboxes_by_class=predict_result)
         cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)
 
     def _draw_teacher_bboxes(self, image: np.ndarray, teacher_bboxes: List[Tuple[float, float, float, float, int]]):

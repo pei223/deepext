@@ -45,7 +45,7 @@ if dataset_type == "stl10":
 elif dataset_type == "cifar10":
     data_loader, dataset, n_classes, test_data_loader = cifar10_setting(preset_transforms)
 
-# model: AttentionBranchNetwork = AttentionBranchNetwork(n_classes=n_classes, first_layer_channels=32, lr=1e-4).cuda()
+model: AttentionBranchNetwork = AttentionBranchNetwork(n_classes=n_classes, first_layer_channels=32, lr=1e-4).cuda()
 model: EfficientNet = EfficientNet(num_classes=n_classes, lr=1e-3)
 
 # model.load_weight(".abn.model")

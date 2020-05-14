@@ -2,6 +2,7 @@ from torch.utils.data import DataLoader
 from typing import List, Callable
 from statistics import mean
 import numpy as np
+import time
 
 from deepext.base import BaseModel
 from deepext.utils.tensor_util import try_cuda
@@ -21,13 +22,15 @@ class Trainer:
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self._model.get_optimizer(),
                                                          lr_lambda=lr_scheduler_func) if lr_scheduler_func else None
         for epoch in range(epochs):
+            start = time.time()
             mean_loss = self.train_epoch(data_loader)
             lr_scheduler.step(epoch) if lr_scheduler else None
+            elapsed_time = time.time() - start
             metric_str = ""
             for metric_func in metric_func_ls:
                 metric = self.calc_metric(test_dataloader, metric_func)
                 metric_str += f"{metric_func.__name__}: {metric} "
-            print(f"epoch {epoch + 1} / {epochs} --- loss: {mean_loss},  {metric_str}")
+            print(f"epoch {epoch + 1} / {epochs} :  {elapsed_time}s   --- loss: {mean_loss},  {metric_str}")
             for callback in callbacks:
                 callback(epoch)
 

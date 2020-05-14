@@ -2,10 +2,10 @@ import torch.optim as optim
 import torch
 import numpy as np
 
-from deepext.base.base_model import BaseModel
+from ...base.base_model import BaseModel
 from .efficientdet_lib.models.efficientdet import EfficientDet
-from .efficientdet_lib.utils import EFFICIENTDET, get_state_dict
-from deepext.utils.tensor_util import try_cuda
+from .efficientdet_lib.utils import EFFICIENTDET
+from ...utils.tensor_util import try_cuda
 
 
 class EfficientDetector(BaseModel):
