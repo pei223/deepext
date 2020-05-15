@@ -62,10 +62,11 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
                       collate_fn=ObjectDetectionCollator()), train_dataset, test_dataset
 
 
-def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float):
+def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, efficientdet_scale: int = 0):
     # TODO モデルはここを追加
     if MODEL_EFFICIENT_DET == model_type:
-        return EfficientDetector(num_classes=dataset_setting.n_classes, lr=lr)
+        return EfficientDetector(num_classes=dataset_setting.n_classes, lr=lr,
+                                 network=f"efficientdet-d{efficientdet_scale}")
     elif MODEL_M2DET == model_type:
         return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
     assert f"Invalid model type. Valid models is {MODEL_TYPES}"
@@ -82,22 +83,32 @@ parser.add_argument('--progress_dir', type=str, default=None, help='Directory fo
 parser.add_argument('--model', type=str, default=MODEL_EFFICIENT_DET, help=f"Model type in {MODEL_TYPES}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
+parser.add_argument('--efficientdet_scale', type=int, default=0, help="Number of scale of EfficientDet.")
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    # Fetch dataset.
     dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
-    model: BaseModel = try_cuda(get_model(dataset_setting, model_type=args.model, lr=args.lr))
+    # Fetch model and load weight.
+    model: BaseModel = try_cuda(
+        get_model(dataset_setting, model_type=args.model, lr=args.lr, efficientdet_scale=args.efficientdet_scale))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
     save_weight_path = args.save_weight_path or f"./{args.model}.pth"
 
-    callbacks = [VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
-                                                      out_dir=args.progress_dir,
-                                                      label_names=dataset_setting.label_names)]
+    # Training.
+    callbacks = []
+    if args.progress_dir:
+        callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
+                                                              out_dir=args.progress_dir,
+                                                              label_names=dataset_setting.label_names))
     trainer = Trainer(model)
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch), metric_func_ls=[])  # TODO 物体検出指標
+
+    # Save weight.
     model.save_weight(save_weight_path)

@@ -62,8 +62,9 @@ class EfficientDet(nn.Module):
     def forward(self, inputs):
         """
         :param inputs: predicting (channels, height, width) or
-                        training (batch size, channels, height, width), (batch size, bounding box count, height, width)
-        :return: predicting (BBox, ), (BBox, ), (BBox, 4) or training (float, float)
+                        training (batch size, channels, height, width), (batch size, bounding box count, 5)
+                            (x_min, y_min, x_max, y_max, class label)
+        :return: predicting (BBox, ), (BBox, ), (BBox, 4) or training loss (float, float)
         """
         if self.is_training:
             inputs, annotations = inputs

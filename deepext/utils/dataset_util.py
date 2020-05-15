@@ -100,10 +100,10 @@ class ObjectDetectionCollator:
 
 
 class LabelAndDataTransforms:
-    LABEL_INDEX = 1
-    DATA_INDEX = 2
-
     def __init__(self, transform_sets=List[Tuple[any, any]]):
+        """
+        :param transform_sets: list of data and label transforms [(data_transform, label_transform), ...]
+        """
         self._transform_sets = transform_sets
 
     def __call__(self, img, label):

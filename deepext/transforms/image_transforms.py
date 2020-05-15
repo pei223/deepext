@@ -1,5 +1,7 @@
 import torch
+from torchvision.transforms import ToTensor
 import numpy as np
+from PIL import Image
 
 
 class ImageToOneHot:
@@ -12,7 +14,9 @@ class ImageToOneHot:
         return img.view(img.shape[0], img.shape[1], img.shape[3]).permute(2, 0, 1)
 
 
-class ReturnFloatTensorToInt:
-    def __call__(self, normalized_img: torch.Tensor):
-        test = (normalized_img * 255 % 255).long()
-        return test
+class PilToTensor:
+    to_tensor = ToTensor()
+
+    def __call__(self, img: Image.Image):
+        # NOTE ToTensorでtensor型になるが正規化されてしまうため*255する
+        return (self.to_tensor(img) * 255 % 256).long()

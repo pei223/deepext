@@ -16,3 +16,6 @@ class DataSetSetting:
                 return dataset_setting
             dataset_setting_type_names.append(dataset_setting.dataset_type)
         assert f"Invalid dataset type. Valid dataset is {dataset_setting_type_names}"
+
+    def set_size(self, img_size: Tuple[int, int]):
+        self.size = img_size

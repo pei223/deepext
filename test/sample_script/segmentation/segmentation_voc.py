@@ -2,12 +2,11 @@ from torch.utils.data import DataLoader, Dataset
 import random
 import torchvision
 from torchvision.transforms import ToTensor, Resize, RandomHorizontalFlip, RandomRotation, Scale
-import torch
 import json
 
 from deepext import UNet, PSPNet, ResPSPNet, ResUNet, Trainer
 from deepext.layers import segmentation_accuracy
-from deepext.transforms.image_transforms import ImageToOneHot, ReturnFloatTensorToInt
+from deepext.transforms import ImageToOneHot, PilToTensor
 from deepext.utils import *
 
 n_classes = 21
@@ -17,8 +16,8 @@ epochs = 300
 with open("../.env.json") as file:
     settings = json.load(file)
 
-img_transforms = [Resize(img_size), ToTensor(), None, None, ]
-label_transforms = [Resize(img_size), ToTensor(), ReturnFloatTensorToInt(), ImageToOneHot(n_classes), ]
+img_transforms = [Resize(img_size), ToTensor(), None, ]
+label_transforms = [Resize(img_size), PilToTensor(), ImageToOneHot(n_classes), ]
 
 
 def label_img_transform(img, label, img_transforms, label_transforms):

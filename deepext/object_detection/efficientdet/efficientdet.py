@@ -28,7 +28,7 @@ class EfficientDetector(BaseModel):
     def train_batch(self, inputs, teachers) -> float:
         """
         :param inputs: (batch size, channels, height, width)
-        :param teachers: (batch size, bounding box count, height, width)
+        :param teachers: (batch size, bounding box count, 5)
         """
         self._model.train()
         self._model.is_training = True
