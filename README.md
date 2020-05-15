@@ -33,3 +33,11 @@ python train_detection.py --progress_dir="途中経過出力先ディレクト�
 python train_segmentation.py --progress_dir="途中経過出力先ディレクトリ" --dataset_root="Pascal VOCデータセット2007のパス(tarファイル) --moodel=pspnet --dataset=voc2007"
 ```
 
+
+<br/><br/>
+
+
+## 学習経過
+<img src="imgs/segmentation_progress.png" width="256" />
+<img src="imgs/detection_progress.png" width="256" />
+
