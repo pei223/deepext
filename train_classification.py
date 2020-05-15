@@ -11,14 +11,16 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
+# TODO モデル・データセットはここを追加
 MODEL_EFFICIENT_NET = "efficientnet"
 MODEL_ATTENTION_BRANCH_NETWORK = "attention_branch_network"
 MODEL_MOBILENET = "mobilenet"
 MODEL_TYPES = [MODEL_EFFICIENT_NET, MODEL_ATTENTION_BRANCH_NETWORK, MODEL_MOBILENET]
-TYPE_STL = "stl"
-TYPE_CIFAR = "cifar"
-settings = [DataSetSetting(dataset_type=TYPE_STL, size=(96, 96), n_classes=10),
-            DataSetSetting(dataset_type=TYPE_CIFAR, size=(32, 32), n_classes=10)]
+DATASET_STL = "stl"
+DATASET_CIFAR = "cifar"
+DATASET_TYPES = [DATASET_STL, DATASET_CIFAR]
+settings = [DataSetSetting(dataset_type=DATASET_STL, size=(96, 96), n_classes=10),
+            DataSetSetting(dataset_type=DATASET_CIFAR, size=(32, 32), n_classes=10)]
 
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
@@ -27,12 +29,13 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
         [Resize(setting.size), RandomResizedCrop(size=setting.size, scale=(0.3, 0.3)), ToTensor()])
     test_transforms = Compose([Resize(setting.size), ToTensor()])
     train_dataset, test_dataset = None, None
-    if TYPE_STL == setting.dataset_type:
+    # TODO データセットはここを追加
+    if DATASET_STL == setting.dataset_type:
         train_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="train",
                                                    transform=train_transforms)
         test_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="test",
                                                   transform=test_transforms)
-    elif TYPE_CIFAR == setting.dataset_type:
+    elif DATASET_CIFAR == setting.dataset_type:
         train_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=True,
                                                      transform=train_transforms)
         test_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=False,
@@ -43,6 +46,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float):
+    # TODO モデルはここを追加
     if MODEL_EFFICIENT_NET == model_type:
         return EfficientNet(num_classes=dataset_setting.n_classes, lr=lr)
     elif MODEL_ATTENTION_BRANCH_NETWORK == model_type:
@@ -55,12 +59,12 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float):
 parser = argparse.ArgumentParser(description='Pytorch Image classification training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default='stl', help='Dataset type in []')
+parser.add_argument('--dataset', type=str, default=DATASET_STL, help=f'Dataset type in {DATASET_TYPES}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
-parser.add_argument('--model', type=str, default="mobilenet", help="Model type")
+parser.add_argument('--model', type=str, default=MODEL_MOBILENET, help=f"Model type in {MODEL_TYPES}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 
@@ -71,7 +75,7 @@ if __name__ == "__main__":
                                                                                     args.batch_size)
     model: BaseModel = try_cuda(get_model(dataset_setting, model_type=args.model, lr=args.lr))
     if args.load_weight_path:
-        model.load_weight(args.load_weigh_path)
+        model.load_weight(args.load_weight_path)
     save_weight_path = args.save_weight_path or f"./{args.model}.pth"
 
     callbacks = []

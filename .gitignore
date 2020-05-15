@@ -205,7 +205,7 @@ dmypy.json
 *main.py
 /venv
 
-
+/temp
 .env.json
 
 # End of https://www.gitignore.io/api/python,pycharm
