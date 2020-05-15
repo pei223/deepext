@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import deepext.object_detection.m2det.m2det_lib.layers.senet as senet
-import deepext.object_detection.m2det.m2det_lib.layers.resnet as resnet
+from ...m2det_lib.layers import senet, resnet
 
 
 class BasicConv(nn.Module):

@@ -3,13 +3,13 @@ import torch.optim as optim
 import numpy as np
 import copy
 
-from deepext.base.base_model import BaseModel
+from ...base.base_model import BaseModel
 from .m2det_lib.m2det import build_net
 from .m2det_lib.utils.core import init_net, image_forward
 from .m2det_lib.layers.functions import PriorBox, Detect
 from .m2det_lib.layers.modules import MultiBoxLoss
 from .m2det_lib.data import mk_anchors
-from deepext.utils.tensor_util import try_cuda
+from ...utils import try_cuda
 
 
 class M2Det(BaseModel):

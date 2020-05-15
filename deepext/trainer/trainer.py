@@ -47,6 +47,8 @@ class Trainer:
                     metric_func: Callable[[np.ndarray, np.ndarray], None]) -> float:
         metric_ls = []
         for x, teacher in data_loader:
+            if isinstance(teacher, torch.Tensor):
+                teacher = teacher.cpu().numpy()
             result = self._model.predict(x)
             metric_ls.append(metric_func(result, teacher))
         return mean(metric_ls)

@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler
 from deepext.utils.tensor_util import try_cuda
 from deepext.layers import classification_accuracy
+from deepext.utils import *
 
 from util import DataSetSetting
 
@@ -43,9 +44,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float):
     if MODEL_EFFICIENT_NET == model_type:
-        m = EfficientNet(num_classes=dataset_setting.n_classes, lr=lr)
-        m.load_weight("C:/Users/ip-miyake/Downloads/efficientnet-b0-355c32eb.pth", weight_only=True)
-        return m
+        return EfficientNet(num_classes=dataset_setting.n_classes, lr=lr)
     elif MODEL_ATTENTION_BRANCH_NETWORK == model_type:
         return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=lr))
     elif MODEL_MOBILENET == model_type:
@@ -70,12 +69,18 @@ if __name__ == "__main__":
     dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
-    model: BaseModel = get_model(dataset_setting, model_type=args.model, lr=args.lr)
+    model: BaseModel = try_cuda(get_model(dataset_setting, model_type=args.model, lr=args.lr))
     if args.load_weight_path:
         model.load_weight(args.load_weigh_path)
     save_weight_path = args.save_weight_path or f"./{args.model}.pth"
+
+    callbacks = []
+    if isinstance(model, AttentionBranchNetwork):
+        callbacks = [
+            GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=1, dataset=test_dataset)]
+
     trainer = Trainer(model)
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                epochs=args.epoch,
+                epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch), metric_func_ls=[classification_accuracy, ])
     model.save_weight(save_weight_path)
