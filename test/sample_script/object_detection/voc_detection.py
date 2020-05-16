@@ -1,11 +1,10 @@
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import torchvision
-from torchvision.transforms import ToTensor, Resize, RandomHorizontalFlip, RandomRotation, Scale, Compose, Normalize
+from torchvision.transforms import ToTensor, Resize, Compose
 import json
 
-from deepext import UNet, PSPNet, ResPSPNet, ResUNet, Trainer, EfficientDetector, ObjectDetectionCollator, \
-    VisualizeRandomObjectDetectionResult, M2Det, SSD
-from deepext.layers import segmentation_accuracy
+from deepext import Trainer, EfficientDetector
+from deepext.utils.dataset.detection import ObjectDetectionCollator, VOCAnnotationTransform
 from deepext.utils import *
 
 n_classes = 20

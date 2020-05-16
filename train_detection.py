@@ -1,12 +1,10 @@
 import argparse
-from typing import Tuple
-from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop
+from torchvision.transforms import ToTensor, Resize, Compose
 import torchvision
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
-from deepext import Trainer, BaseModel, LearningRateScheduler, EfficientDetector, M2Det
-from deepext.utils.tensor_util import try_cuda
-from deepext.layers import classification_accuracy
+from deepext import Trainer, EfficientDetector, M2Det
+from deepext.utils.dataset.detection import ObjectDetectionCollator, VOCAnnotationTransform
 from deepext.utils import *
 
 from util import DataSetSetting
