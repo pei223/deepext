@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler
 from deepext.utils.tensor_util import try_cuda
-from deepext.layers import ClassificationAccuracy
+from deepext.layers import ClassificationAccuracy, ClassificationAccuracyByClasses
 from deepext.utils import *
 
 from util import DataSetSetting
@@ -19,8 +19,12 @@ MODEL_TYPES = [MODEL_EFFICIENT_NET, MODEL_ATTENTION_BRANCH_NETWORK, MODEL_MOBILE
 DATASET_STL = "stl"
 DATASET_CIFAR = "cifar"
 DATASET_TYPES = [DATASET_STL, DATASET_CIFAR]
-settings = [DataSetSetting(dataset_type=DATASET_STL, size=(96, 96), n_classes=10),
-            DataSetSetting(dataset_type=DATASET_CIFAR, size=(32, 32), n_classes=10)]
+settings = [DataSetSetting(dataset_type=DATASET_STL, size=(96, 96), n_classes=10,
+                           label_names=['airplane', 'bird', 'car', 'cat', 'deer', 'dog', 'horse', 'monkey', 'ship',
+                                        'truck']),
+            DataSetSetting(dataset_type=DATASET_CIFAR, size=(32, 32), n_classes=10,
+                           label_names=['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship',
+                                        'truck'])]
 
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
@@ -94,7 +98,8 @@ if __name__ == "__main__":
     trainer = Trainer(model)
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
-                lr_scheduler_func=LearningRateScheduler(args.epoch), metric_func_ls=[ClassificationAccuracy(), ])
+                lr_scheduler_func=LearningRateScheduler(args.epoch),
+                metric_func_ls=[ClassificationAccuracyByClasses(dataset_setting.label_names), ])
 
     # Save weight.
     model.save_weight(save_weight_path)

@@ -1,3 +1,6 @@
+from collections import OrderedDict
+from typing import List
+
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score
@@ -21,7 +24,7 @@ class SegmentationAccuracy(Metrics):
         total = pred.shape[-1] * pred.shape[-2]
         pred = pred.view(pred.shape[0], -1)
         teacher = teacher.view(teacher.shape[0], -1)
-        accs: torch.Tensor = (pred == teacher).sum(-1).float() / total
+        accs = (pred == teacher).sum(-1).float() / total
         self.accuracies.extend(accs.tolist())
 
     def calc_summary(self) -> any:
@@ -32,6 +35,108 @@ class SegmentationAccuracy(Metrics):
 
     def name(self):
         return "segmentation accuracy"
+
+
+class SegmentationAccuracyByClasses(Metrics):
+    def __init__(self, label_names: List[str]):
+        self.label_names = ["background", ] + label_names
+        self.correct_by_classes = [0 for _ in range(len(self.label_names))]
+        self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
+        """
+        :param pred: (Batch size, classes, height, width)
+        :param teacher: (Batch size, classes, height, width)
+        """
+        pred = torch.from_numpy(pred)
+        if isinstance(teacher, torch.Tensor):
+            teacher = teacher.cpu().numpy()
+        if isinstance(pred, torch.Tensor):
+            pred = pred.cpu().numpy()
+        assert pred.ndim == 4 and teacher.ndim == 4
+        assert pred.shape[-1] == teacher.shape[-1] and pred.shape[-2] == teacher.shape[-2], "教師データと推論結果のサイズは同じにしてください"
+
+        pred = pred.argmax(1).reshape([pred.shape[0], -1])
+        teacher = teacher.argmax(1).reshape(teacher.shape[0], -1)
+        # NOTE バッチまとめて計算するとメモリが大きくなりnumpy演算が正常にできないため、1データごとに処理
+        for batch_i in range(pred.shape[0]):
+            one_pred, one_teacher = pred[batch_i], teacher[batch_i]
+            for label in range(len(self.label_names)):
+                label_index = (one_teacher == label)
+                label_result_flags = (one_teacher[label_index] == one_pred[label_index])
+                correct = np.count_nonzero(label_result_flags)
+                incorrect = label_result_flags.shape[0] - correct
+                self.correct_by_classes[label] += correct
+                self.incorrect_by_classes[label] += incorrect
+
+    def calc_summary(self):
+        result = OrderedDict()
+        total_correct, total_incorrect = 0, 0
+        for i, label_name in enumerate(self.label_names):
+            correct, incorrect = self.correct_by_classes[i], self.incorrect_by_classes[i]
+            result[label_name] = correct / (correct + incorrect)
+            total_correct += correct
+            total_incorrect += incorrect
+        result["total"] = total_correct / (total_correct + total_incorrect)
+        return result.items()
+
+    def clear(self):
+        self.correct_by_classes = [0 for _ in range(len(self.label_names))]
+        self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def name(self):
+        return "Segmentation accuracy by classes"
+
+
+class SegmentationIoUByClasses(Metrics):
+    def __init__(self, label_names: List[str]):
+        self.label_names = ["background", ] + label_names
+        self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
+        self.union_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
+        """
+        :param pred: (Batch size, classes, height, width)
+        :param teacher: (Batch size, classes, height, width)
+        """
+        pred = torch.from_numpy(pred)
+        if isinstance(teacher, torch.Tensor):
+            teacher = teacher.cpu().numpy()
+        if isinstance(pred, torch.Tensor):
+            pred = pred.cpu().numpy()
+        assert pred.ndim == 4 and teacher.ndim == 4
+        assert pred.shape[-1] == teacher.shape[-1] and pred.shape[-2] == teacher.shape[-2], "教師データと推論結果のサイズは同じにしてください"
+
+        pred = pred.argmax(1).reshape([pred.shape[0], -1])
+        teacher = teacher.argmax(1).reshape(teacher.shape[0], -1)
+        # NOTE バッチまとめて計算するとメモリが大きくなりnumpy演算が正常にできないため、1データごとに処理
+        for batch_i in range(pred.shape[0]):
+            one_pred, one_teacher = pred[batch_i], teacher[batch_i]
+            for label in range(len(self.label_names)):
+                label_teacher, label_pred = (one_teacher == label), (one_pred == label)
+                label_result_flags = (one_teacher[label_teacher] == one_pred[label_teacher])
+                overlap = np.count_nonzero(label_result_flags)
+                union = label_teacher.shape[0] + label_pred.shape[0] - overlap
+                self.overlap_by_classes[label] += overlap
+                self.union_by_classes[label] += union
+
+    def calc_summary(self):
+        result = OrderedDict()
+        total_overlap, total_union = 0, 0
+        for i, label_name in enumerate(self.label_names):
+            overlap, union = self.overlap_by_classes[i], self.union_by_classes[i]
+            result[label_name] = overlap / union
+            total_overlap += overlap
+            total_union += union
+        result["total"] = total_overlap / total_union
+        return result.items()
+
+    def clear(self):
+        self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
+        self.union_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def name(self):
+        return "Segmentation IoU by classes"
 
 
 class ClassificationAccuracy(Metrics):
@@ -57,6 +162,51 @@ class ClassificationAccuracy(Metrics):
 
     def name(self):
         return "classification accuracy"
+
+
+class ClassificationAccuracyByClasses(Metrics):
+    def __init__(self, label_names: List[str]):
+        self.label_names = label_names
+        self.correct_by_classes = [0 for _ in range(len(self.label_names))]
+        self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
+        assert pred.ndim == 1 or pred.ndim == 2
+        assert teacher.ndim == 1 or teacher.ndim == 2
+        if isinstance(teacher, torch.Tensor):
+            teacher = teacher.cpu().numpy()
+        if isinstance(pred, torch.Tensor):
+            pred = pred.cpu().numpy()
+        if pred.ndim == 2:
+            pred = pred.argmax(-1)
+        if teacher.ndim == 2:
+            teacher = teacher.argmax(-1)
+        result_flags: np.ndarray = (pred == teacher)
+        for label in range(len(self.label_names)):
+            label_index = (teacher == label)
+            class_result_flags = result_flags[label_index]
+            correct = np.count_nonzero(class_result_flags)
+            incorrect = class_result_flags.shape[0] - correct
+            self.correct_by_classes[label] += correct
+            self.incorrect_by_classes[label] += incorrect
+
+    def calc_summary(self) -> any:
+        result = OrderedDict()
+        total_correct, total_incorrect = 0, 0
+        for i, label_name in enumerate(self.label_names):
+            correct, incorrect = self.correct_by_classes[i], self.incorrect_by_classes[i]
+            result[label_name] = correct / (correct + incorrect)
+            total_correct += correct
+            total_incorrect += incorrect
+        result["total"] = total_correct / (total_correct + total_incorrect)
+        return result.items()
+
+    def clear(self):
+        self.correct_by_classes = [0 for _ in range(len(self.label_names))]
+        self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def name(self) -> str:
+        return "Classification accuracy by classes"
 
 
 def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor):
