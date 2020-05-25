@@ -2,9 +2,11 @@ from typing import Tuple, List, Callable
 import numpy as np
 from torch.utils.data import DataLoader
 from statistics import mean
+import time
 
 from deepext.assemble.assemble_model import AssembleModel
 from deepext.base import BaseModel
+from ..base import Metrics
 from deepext.assemble.learning_table import LearningTable
 from deepext.utils.tensor_util import try_cuda
 
@@ -13,8 +15,7 @@ class XTrainer:
     def __init__(self, models: AssembleModel):
         self._assemble_model: AssembleModel = models
 
-    def fit(self, learning_tables: List[LearningTable],
-            metric_func_ls: List[Callable[[np.ndarray, np.ndarray], any]] = None,
+    def fit(self, learning_tables: List[LearningTable], metric_func_ls: List[Metrics] = None,
             test_dataloader: DataLoader = None):
         assert len(learning_tables) == len(self._assemble_model.model_list)
         metric_func_ls = metric_func_ls or []
@@ -26,11 +27,11 @@ class XTrainer:
         total_metric_str = ""
         for metric_func in metric_func_ls:
             metric = self.calc_metric(self._assemble_model, test_dataloader, metric_func)
-            total_metric_str += f"{metric_func.__name__}: {metric} "
+            total_metric_str += f"{metric_func.name()}: {metric} "
         print(f"\n\n\nTotal metrics  :  {total_metric_str}\n\n")
 
     def train_one_model(self, model: BaseModel, learning_table: LearningTable, test_dataloader: DataLoader,
-                        metric_func_ls: List[Callable[[np.ndarray, np.ndarray], any]]):
+                        metric_func_ls: List[Metrics]):
         for epoch in range(learning_table.epochs):
             mean_loss = self.train_epoch(model, learning_table.data_loader)
             metric_str = ""
@@ -51,10 +52,9 @@ class XTrainer:
             loss_list.append(loss)
         return mean(loss_list)
 
-    def calc_metric(self, model: BaseModel or AssembleModel, data_loader: DataLoader,
-                    metric_func: Callable[[np.ndarray, np.ndarray], None]) -> float:
-        metric_ls = []
+    def calc_metric(self, model: BaseModel or AssembleModel, data_loader: DataLoader, metric_func: Metrics) -> float:
+        metric_func.clear()
         for x, teacher in data_loader:
             result = model.predict(x)
-            metric_ls.append(metric_func(result, teacher.numpy()))
-        return mean(metric_ls)
+            metric_func.calc_one_batch(result, teacher)
+        return metric_func.calc_summary()

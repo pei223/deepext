@@ -4,7 +4,8 @@ from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
-from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler
+from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler, \
+    AssembleModel, XTrainer, LearningTable
 from deepext.utils.tensor_util import try_cuda
 from deepext.layers import ClassificationAccuracy
 from deepext.utils import *
@@ -65,9 +66,10 @@ parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
 parser.add_argument('--model', type=str, default=MODEL_MOBILENET, help=f"Model type in {MODEL_TYPES}")
-parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
-parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
+parser.add_argument('--load_weight_dir', type=str, default=None, help="Saved weight directory path")
+parser.add_argument('--save_weight_dir', type=str, default=None, help="Saved weight directory path")
 parser.add_argument('--efficientnet_scale', type=int, default=0, help="Number of scale of EfficientNet.")
+parser.add_argument('--n_models', type=int, default=3, help="Count of model.")
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -76,25 +78,24 @@ if __name__ == "__main__":
     dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
+    callbacks = []
+    model_list, learning_tables = [], []
+    for _ in range(args.n_models):
+        model_list.append(try_cuda(
+            get_model(dataset_setting, model_type=args.model, lr=args.lr, efficientnet_scale=args.efficientnet_scale)))
+        learning_tables.append(LearningTable(data_loader=train_dataloader, callbacks=callbacks, epochs=args.epoch))
+
+    assemble_model: AssembleModel = AssembleModel(models=model_list)
     # Fetch model and load weight.
-    model: BaseModel = try_cuda(
-        get_model(dataset_setting, model_type=args.model, lr=args.lr, efficientnet_scale=args.efficientnet_scale))
-    if args.load_weight_path:
-        model.load_weight(args.load_weight_path)
-    save_weight_path = args.save_weight_path or f"./{args.model}.pth"
+    if args.load_weight_dir:
+        assemble_model.load_weight(args.load_weight_dir)
+    save_weight_dir = args.save_weight_dir or f"./{args.model}"
 
     # Training.
-    callbacks = []
-    if args.progress_dir:
-        if isinstance(model, AttentionBranchNetwork):
-            callbacks = [
-                GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=1,
-                                             dataset=test_dataset)]
-
-    trainer = Trainer(model)
-    trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                epochs=args.epoch, callbacks=callbacks,
-                lr_scheduler_func=LearningRateScheduler(args.epoch), metric_func_ls=[ClassificationAccuracy(), ])
-
+    trainer = XTrainer(assemble_model)
+    trainer.fit(test_dataloader=test_dataloader, metric_func_ls=[ClassificationAccuracy(), ],
+                learning_tables=learning_tables)
     # Save weight.
-    model.save_weight(save_weight_path)
+    if not Path(save_weight_dir).exists():
+        Path(save_weight_dir).mkdir()
+    assemble_model.save_weight(save_weight_dir)

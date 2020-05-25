@@ -21,14 +21,13 @@ class EfficientDetector(BaseModel):
         self._num_classes = num_classes
         self._network = network
         self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
-        self._scheduler = optim.lr_scheduler.ReduceLROnPlateau(self._optimizer, patience=3, verbose=True)
         self._score_threshold = score_threshold
         self._max_detections = max_detections
 
     def train_batch(self, inputs, teachers) -> float:
         """
         :param inputs: (batch size, channels, height, width)
-        :param teachers: (batch size, bounding box count, 5)
+        :param teachers: (batch size, bounding box count, 5(x_min, y_min, x_max, y_max, label))
         """
         self._model.train()
         self._model.is_training = True
