@@ -27,10 +27,7 @@ class Trainer:
             mean_loss = self.train_epoch(data_loader)
             lr_scheduler.step(epoch) if lr_scheduler else None
             elapsed_time = time.time() - start
-            metric_str = ""
-            for metric_func in metric_func_ls:
-                metric = self.calc_metric(test_dataloader, metric_func)
-                metric_str += f"{metric_func.name()}: {metric} "
+            metric_str = self.calc_metric_ls(test_dataloader, metric_func_ls)
             print(f"epoch {epoch + 1} / {epochs} :  {elapsed_time}s   --- loss: {mean_loss},  {metric_str}")
             for callback in callbacks:
                 callback(epoch)
@@ -44,11 +41,16 @@ class Trainer:
             loss_list.append(loss)
         return mean(loss_list)
 
-    def calc_metric(self, data_loader: DataLoader, metric_func: Metrics) -> float:
-        metric_func.clear()
+    def calc_metric_ls(self, data_loader: DataLoader, metric_func_ls: List[Metrics]) -> str:
+        for metric_func in metric_func_ls:
+            metric_func.clear()
         for x, teacher in data_loader:
             if isinstance(teacher, torch.Tensor):
                 teacher = teacher.cpu().numpy()
             result = self._model.predict(x)
-            metric_func.calc_one_batch(result, teacher)
-        return metric_func.calc_summary()
+            for metric_func in metric_func_ls:
+                metric_func.calc_one_batch(result, teacher)
+        metrics_str = ""
+        for metric_func in metric_func_ls:
+            metrics_str += f"{metric_func.name()}: {metric_func.calc_summary()}"
+        return metrics_str

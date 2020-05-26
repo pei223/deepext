@@ -4,7 +4,8 @@ from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
-from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler
+from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler, \
+    ModelCheckout
 from deepext.utils.tensor_util import try_cuda
 from deepext.layers import ClassificationAccuracy, ClassificationAccuracyByClasses
 from deepext.utils import *
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     save_weight_path = args.save_weight_path or f"./{args.model}.pth"
 
     # Training.
-    callbacks = []
+    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):
             callbacks = [

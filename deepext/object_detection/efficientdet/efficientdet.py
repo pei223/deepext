@@ -39,7 +39,7 @@ class EfficientDetector(BaseModel):
         classification_loss, regression_loss = self._model([images, annotations])
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()
-        print(classification_loss.item(), regression_loss.item())
+        # print(classification_loss.item(), regression_loss.item())
         loss = classification_loss + regression_loss
         if bool(loss == 0):
             return 0.0

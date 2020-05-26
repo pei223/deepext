@@ -209,64 +209,71 @@ class ClassificationAccuracyByClasses(Metrics):
         return "Classification accuracy by classes"
 
 
-def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor):
-    # You can comment out this line if you are passing tensors of equal shape
-    # But if you are passing output from UNet or something it will most probably
-    # be with the BATCH x 1 x H x W shape
-    outputs = torch.max(outputs, 1)[0].int()
-    labels = torch.max(labels, 1)[0].int()
-    intersection = (outputs & labels).float().sum((1, 2))  # Will be zero if Truth=0 or Prediction=0
-    union = (outputs | labels).float().sum((1, 2))  # Will be zzero if both are 0
+class DetectionIoUByClasses(Metrics):
+    def __init__(self, label_names: List[str]):
+        self.label_names = label_names
+        self.union_by_classes = [0 for i in range(len(self.label_names))]
+        self.overlap_by_classes = [0 for i in range(len(self.label_names))]
 
-    # print(((intersection + 0.001) / (union - intersection + 0.001)).shape)
-    return (intersection + 0.001) / (union - intersection + 0.001)
-
-
-def calc_bbox_overlap(result: np.ndarray, teachers: np.ndarray):
-    """
-    :param result:
-    :param teachers:
-    :return:
-    """
-    teacher_area = (teachers[:, 2] - teachers[:, 0]) * (teachers[:, 3] - teachers[:, 1])
-
-    intersection_width = np.minimum(np.expand_dims(result[:, 2], axis=1), teachers[:, 2]) - np.maximum(
-        np.expand_dims(result[:, 0], 1), teachers[:, 0])
-    intersection_height = np.minimum(np.expand_dims(result[:, 3], axis=1), teachers[:, 3]) - np.maximum(
-        np.expand_dims(result[:, 1], 1), teachers[:, 1])
-
-    intersection_width = np.maximum(intersection_width, 0)
-    intersection_height = np.maximum(intersection_height, 0)
-
-    result_area = np.expand_dims((result[:, 2] - result[:, 0]) * (result[:, 3] - result[:, 1]), axis=1)
-    union_area = result_area + teacher_area - intersection_width * intersection_height
-
-    union_area = np.maximum(union_area, np.finfo(float).eps)
-
-    intersection = intersection_width * intersection_height
-
-    return intersection / union_area
-
-
-class IoUByClasses:
-    def __init__(self, n_classes: int):
-        self._n_classes = n_classes
-
-    def __call__(self, results: np.ndarray, teachers: np.ndarray) -> float:
+    def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
-        :param results: (Batch size, classes, bounding boxes by class(variable length))
-        :param teachers: (batch size, bounding box count, 5(x_min, y_min, x_max, y_max, label))
+        :param pred: (Batch size, classes, bounding boxes by class(variable length))
+        :param teacher: (batch size, bounding box count, 5(x_min, y_min, x_max, y_max, label))
         :return:
         """
-        iou_ls = []
-        for i in range(teachers.shape[0]):
-            bbox_annotations = teachers[i, :, :]
+        for i in range(teacher.shape[0]):
+            bbox_annotations = teacher[i, :, :]
             bbox_annotations = bbox_annotations[bbox_annotations[:, 4] >= 0]
             for bbox_annotation in bbox_annotations:
-                label = bbox_annotation[-1]
-                bbox_preds = results[i][label]
-                iou_ls.append(calc_bbox_overlap(bbox_preds, bbox_annotation))
-        return sum(iou_ls) / len(iou_ls) if len(iou_ls) != 0 else 0.0
+                label = int(bbox_annotation[-1])
+                if pred[i] is None or pred[i][label] is None:
+                    overlap, union = self._calc_bbox_overlap_and_union(None, bbox_annotation)
+                    self.union_by_classes[label] += union
+                    self.overlap_by_classes[label] += overlap
+                    continue
+                pred_bboxes = pred[i][label]
+                for pred_bbox in pred_bboxes:
+                    overlap, union = self._calc_bbox_overlap_and_union(pred_bbox, bbox_annotation)
+                    self.union_by_classes[label] += union
+                    self.overlap_by_classes[label] += overlap
+
+    def calc_summary(self):
+        result = OrderedDict()
+        total_overlap, total_union = 0, 0
+        for i, label_name in enumerate(self.label_names):
+            overlap, union = self.overlap_by_classes[i], self.union_by_classes[i]
+            result[label_name] = overlap / union
+            total_overlap += overlap
+            total_union += union
+        result["total"] = total_overlap / total_union
+        return result.items()
+
+    def _calc_bbox_overlap_and_union(self, pred: np.ndarray or None, teacher: np.ndarray):
+        """
+        :param pred: ndarray (4, )
+        :param teacher: ndarray (4,
+        :return:
+        """
+        teacher_area = (teacher[2] - teacher[0]) * (teacher[3] - teacher[1])
+        if pred is None:
+            return 0.0, teacher_area
+
+        pred_area = (pred[2] - pred[0]) * (pred[3] - pred[1])
+
+        intersection_width = np.maximum(np.minimum(pred[2], teacher[2]) - np.maximum(pred[0], teacher[0]), 0)
+        intersection_height = np.maximum(np.minimum(pred[3], teacher[3]) - np.maximum(pred[1], teacher[1]), 0)
+
+        overlap = intersection_width * intersection_height
+        union = teacher_area + pred_area - overlap
+
+        return overlap, union
+
+    def clear(self):
+        self.union_by_classes = [0 for i in range(len(self.label_names))]
+        self.overlap_by_classes = [0 for i in range(len(self.label_names))]
+
+    def name(self):
+        return "Detection IoU by classes"
 
 
 class mAPByClasses:

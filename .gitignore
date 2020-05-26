@@ -206,6 +206,7 @@ dmypy.json
 /venv
 
 /temp
+/saved_weights
 .env.json
 
 # End of https://www.gitignore.io/api/python,pycharm

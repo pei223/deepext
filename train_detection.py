@@ -3,9 +3,10 @@ from torchvision.transforms import ToTensor, Resize, Compose
 import torchvision
 from torch.utils.data import DataLoader
 
-from deepext import Trainer, EfficientDetector, M2Det
+from deepext import Trainer, EfficientDetector, M2Det, ModelCheckout
 from deepext.utils.dataset.detection import ObjectDetectionCollator, VOCAnnotationTransform
 from deepext.utils import *
+from deepext.layers import DetectionIoUByClasses
 
 from util import DataSetSetting
 
@@ -98,7 +99,7 @@ if __name__ == "__main__":
     save_weight_path = args.save_weight_path or f"./{args.model}.pth"
 
     # Training.
-    callbacks = []
+    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
                                                               out_dir=args.progress_dir,
@@ -106,7 +107,8 @@ if __name__ == "__main__":
     trainer = Trainer(model)
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
-                lr_scheduler_func=LearningRateScheduler(args.epoch), metric_func_ls=[])  # TODO 物体検出指標
+                lr_scheduler_func=LearningRateScheduler(args.epoch),
+                metric_func_ls=[DetectionIoUByClasses(dataset_setting.label_names)])  # TODO 物体検出指標
 
     # Save weight.
     model.save_weight(save_weight_path)
