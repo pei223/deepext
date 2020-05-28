@@ -1,7 +1,8 @@
 import torch.nn as nn
 from torch.nn import functional as F
-
-from deepext.layers.basic import Conv2DTrasnposeBatchNorm, Conv2DBatchNormRelu, BottleNeck, BottleNeckIdentity
+import torch
+from deepext.layers.basic import Conv2DTrasnposeBatchNorm, Conv2DBatchNormRelu, BottleNeck, BottleNeckIdentity, \
+    DropBlock2d
 
 
 class ResidualBlock(nn.Module):
@@ -113,3 +114,55 @@ class UpSamplingBlock(nn.Module):
         h, w = 2 * x.size(2), 2 * x.size(3)
         p = F.upsample(input=x, size=(h, w), mode='bilinear')
         return self.conv(p)
+
+
+class SharedWeightResidualBlock(nn.Module):
+    def __init__(self, in_channels: int, dropout_rate=0.3):
+        super().__init__()
+        self.shared_conv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, stride=1,
+                                     padding=1)
+        self._relu = nn.ReLU()
+        self._bn1 = nn.BatchNorm2d(in_channels)
+        self._dropout = nn.Dropout2d(dropout_rate)
+        self._bn2 = nn.BatchNorm2d(in_channels)
+
+    def forward(self, lateral_input: torch.Tensor, vertical_input: torch.Tensor or None):
+        """
+        :param lateral_input: (Batch size, in_channel, height, width)
+        :param vertical_input: (Batch size, in_channel, height, width)
+        :return:  (Batch size, out_channel, height, width)
+        """
+        input_ = lateral_input + vertical_input if vertical_input is not None else lateral_input
+        out = self.shared_conv(input_)
+        out = self._relu(self._bn1(out))
+        out = self._dropout(out)
+        out = self.shared_conv(out)
+        out = self._bn2(out)
+        out = out + input_
+        return self._relu(out)
+
+
+class SharedWeightResidualBlockWithDropBlock(nn.Module):
+    def __init__(self, in_channels: int, dropout_rate=0.3):
+        super().__init__()
+        self.shared_conv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, stride=1,
+                                     padding=1)
+        self._relu = nn.ReLU()
+        self._bn1 = nn.BatchNorm2d(in_channels)
+        self._dropblock = DropBlock2d(dropout_rate)
+        self._bn2 = nn.BatchNorm2d(in_channels)
+
+    def forward(self, lateral_input: torch.Tensor, vertical_input: torch.Tensor or None):
+        """
+        :param lateral_input: (Batch size, in_channel, height, width)
+        :param vertical_input: (Batch size, in_channel, height, width)
+        :return:  (Batch size, out_channel, height, width)
+        """
+        input_ = lateral_input + vertical_input if vertical_input is not None else lateral_input
+        out = self.shared_conv(input_)
+        out = self._relu(self._bn1(out))
+        out = self._dropblock(out)
+        out = self.shared_conv(out)
+        out = self._bn2(out)
+        out = out + input_
+        return self._relu(out)

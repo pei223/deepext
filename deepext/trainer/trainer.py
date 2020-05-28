@@ -16,7 +16,7 @@ class Trainer:
 
     def fit(self, data_loader: DataLoader, epochs: int, test_dataloader: DataLoader = None,
             callbacks: List[Callable[[int, ], None]] = None, metric_func_ls: List[Metrics] = None,
-            lr_scheduler_func: Callable[[int, ], float] = None):
+            lr_scheduler_func: Callable[[int, ], float] = None, calc_metrics_per_epoch: int = 5):
         callbacks, metric_func_ls = callbacks or [], metric_func_ls or []
         print(f"\n\nStart training : {self._model.get_model_config()}\n\n")
 
@@ -27,8 +27,10 @@ class Trainer:
             mean_loss = self.train_epoch(data_loader)
             lr_scheduler.step(epoch) if lr_scheduler else None
             elapsed_time = time.time() - start
-            metric_str = self.calc_metric_ls(test_dataloader, metric_func_ls)
-            print(f"epoch {epoch + 1} / {epochs} :  {elapsed_time}s   --- loss: {mean_loss},  {metric_str}")
+            metric_str = ""
+            if (epoch + 1) % calc_metrics_per_epoch == 0:
+                metric_str = "\n" + self.calc_metric_ls(test_dataloader, metric_func_ls)
+            print(f"epoch {epoch + 1} / {epochs} :  {elapsed_time}s   --- loss: {mean_loss}{metric_str}")
             for callback in callbacks:
                 callback(epoch)
 

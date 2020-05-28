@@ -1,1 +1,1 @@
-from .image_transforms import ImageToOneHot, PilToTensor
+from .image_transforms import ImageToOneHot, PilToTensor, SegmentationLabelSmoothing

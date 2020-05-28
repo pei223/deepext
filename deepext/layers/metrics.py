@@ -72,13 +72,17 @@ class SegmentationAccuracyByClasses(Metrics):
     def calc_summary(self):
         result = OrderedDict()
         total_correct, total_incorrect = 0, 0
+        avg_acc = 0.0
         for i, label_name in enumerate(self.label_names):
             correct, incorrect = self.correct_by_classes[i], self.incorrect_by_classes[i]
             result[label_name] = correct / (correct + incorrect)
             total_correct += correct
             total_incorrect += incorrect
+            avg_acc += result[label_name]
+        result["average"] = avg_acc / len(self.label_names)
+        result["average without background"] = (avg_acc - result["background"]) / (len(self.label_names) - 1)
         result["total"] = total_correct / (total_correct + total_incorrect)
-        return result.items()
+        return list(result.items())
 
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
@@ -116,20 +120,24 @@ class SegmentationIoUByClasses(Metrics):
                 label_teacher, label_pred = (one_teacher == label), (one_pred == label)
                 label_result_flags = (one_teacher[label_teacher] == one_pred[label_teacher])
                 overlap = np.count_nonzero(label_result_flags)
-                union = label_teacher.shape[0] + label_pred.shape[0] - overlap
+                union = np.count_nonzero(label_teacher) + np.count_nonzero(label_pred) - overlap
                 self.overlap_by_classes[label] += overlap
                 self.union_by_classes[label] += union
 
     def calc_summary(self):
         result = OrderedDict()
         total_overlap, total_union = 0, 0
+        avg_iou = 0.0
         for i, label_name in enumerate(self.label_names):
             overlap, union = self.overlap_by_classes[i], self.union_by_classes[i]
             result[label_name] = overlap / union
             total_overlap += overlap
             total_union += union
+            avg_iou += result[label_name]
+        result["average"] = avg_iou / len(self.label_names)
+        result["average without background"] = (avg_iou - result["background"]) / (len(self.label_names) - 1)
         result["total"] = total_overlap / total_union
-        return result.items()
+        return list(result.items())
 
     def clear(self):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
@@ -193,13 +201,16 @@ class ClassificationAccuracyByClasses(Metrics):
     def calc_summary(self) -> any:
         result = OrderedDict()
         total_correct, total_incorrect = 0, 0
+        avg_acc = 0.0
         for i, label_name in enumerate(self.label_names):
             correct, incorrect = self.correct_by_classes[i], self.incorrect_by_classes[i]
             result[label_name] = correct / (correct + incorrect)
             total_correct += correct
             total_incorrect += incorrect
+            avg_acc += result[label_name]
         result["total"] = total_correct / (total_correct + total_incorrect)
-        return result.items()
+        result["average"] = avg_acc / len(self.label_names)
+        return list(result.items())
 
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
@@ -240,13 +251,16 @@ class DetectionIoUByClasses(Metrics):
     def calc_summary(self):
         result = OrderedDict()
         total_overlap, total_union = 0, 0
+        avg_iou = 0.0
         for i, label_name in enumerate(self.label_names):
             overlap, union = self.overlap_by_classes[i], self.union_by_classes[i]
             result[label_name] = overlap / union
             total_overlap += overlap
             total_union += union
+            avg_iou += result[label_name]
+        result["average"] = avg_iou / len(self.label_names)
         result["total"] = total_overlap / total_union
-        return result.items()
+        return list(result.items())
 
     def _calc_bbox_overlap_and_union(self, pred: np.ndarray or None, teacher: np.ndarray):
         """
@@ -276,6 +290,7 @@ class DetectionIoUByClasses(Metrics):
         return "Detection IoU by classes"
 
 
+# TODO 実装途中
 class mAPByClasses:
     def __init__(self, n_classes: int):
         self._n_classes = n_classes

@@ -76,9 +76,9 @@ class SegmentationTypedLoss(nn.Module):
         """
         assert pred.ndim == 4 and teacher.ndim == 4
         if self._loss_type == "ce+dice":
-            return F.cross_entropy(pred, teacher.argmax(1), reduction="mean") + DiceLoss()(pred, teacher)
+            return AdaptiveCrossEntropyLoss()(pred, teacher) + DiceLoss()(pred, teacher)
         if self._loss_type == "ce":
-            return F.cross_entropy(pred, teacher.argmax(1), reduction="mean")
+            return AdaptiveCrossEntropyLoss()(pred, teacher)
         if self._loss_type == "dice":
             return DiceLoss()(pred, teacher)
 
@@ -93,3 +93,24 @@ class AuxiliarySegmentationLoss(nn.Module):
     def forward(self, pred: torch.Tensor, auxiliary_pred: torch.Tensor, teacher: torch.Tensor):
         return self._loss_func(pred, teacher) + self._auxiliary_loss_func(auxiliary_pred,
                                                                           teacher) * self._auxiliary_loss_weight
+
+
+class AdaptiveCrossEntropyLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, pred: torch.Tensor, teacher: torch.Tensor):
+        """
+        :param pred: (B * C * H * W) or (B * C)
+        :param teacher: (B * C * H * W) or (B * H * W) or (B * C) or (B)
+        """
+        if pred.ndim == teacher.ndim:  # For One-Hot
+            # TODO Label smoothingやりたいが今のところ無理っぽい
+            return F.cross_entropy(pred, teacher.argmax(1), reduction="mean")
+            # return nn.BCEWithLogitsLoss()(pred, teacher)
+            # return F.binary_cross_entropy(nn.LogSoftmax(dim=1)(pred), teacher, reduction="mean")
+        if pred.ndim == 4 and teacher.ndim == 3:
+            return F.cross_entropy(pred, teacher, reduction="mean")
+        if pred.ndim == 2 and teacher.ndim == 1:
+            return F.cross_entropy(pred, teacher, reduction="mean")
+        assert False, f"Invalid pred or teacher type,  {pred.shape} and {teacher.shape}"

@@ -180,3 +180,35 @@ class AttentionClassifierBranch(nn.Module):
         classification_label = self.classifier(feature).view(feature.shape[0], -1)
         classification_label = F.softmax(input=classification_label, dim=1)
         return classification_label, attention_map
+
+
+class ResNetMultiScaleBackBone(nn.Module):
+    def __init__(self, resnet_type="resnet18", pretrained=True):
+        super().__init__()
+        assert resnet_type in ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
+        if resnet_type == "resnet18":
+            self.resnet_model = torchvision.models.resnet18(pretrained=pretrained)
+        elif resnet_type == "resnet34":
+            self.resnet_model = torchvision.models.resnet34(pretrained=pretrained)
+        elif resnet_type == "resnet50":
+            self.resnet_model = torchvision.models.resnet50(pretrained=pretrained)
+        elif resnet_type == "resnet101":
+            self.resnet_model = torchvision.models.resnet101(pretrained=pretrained)
+        elif resnet_type == "resnet152":
+            self.resnet_model = torchvision.models.resnet152(pretrained=pretrained)
+
+    def forward(self, x):
+        """
+        :param x: (Batch size, 3, height, width)
+        :return: (Batch size, 64, height/2, width/2), (Batch size, 128, height/4, width/4),
+        (Batch size, 256, height/8, width/8), (Batch size, 512, height/16, width/16)
+        """
+        x = self.resnet_model.conv1(x)
+        x = self.resnet_model.bn1(x)
+        x = self.resnet_model.relu(x)
+        x = self.resnet_model.maxpool(x)
+        out1 = self.resnet_model.layer1(x)
+        out2 = self.resnet_model.layer2(out1)
+        out3 = self.resnet_model.layer3(out2)
+        out4 = self.resnet_model.layer4(out3)
+        return out1, out2, out3, out4

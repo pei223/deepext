@@ -5,18 +5,19 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext import Trainer, BaseModel, LearningRateScheduler, LabelAndDataTransforms, PSPNet, UNet, ResUNet, ResPSPNet, \
-    ModelCheckout
+    ModelCheckout, ShelfNet
 from deepext.utils.tensor_util import try_cuda
 from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses
 from deepext.utils import *
-from deepext.transforms import ImageToOneHot, PilToTensor
+from deepext.transforms import ImageToOneHot, PilToTensor, SegmentationLabelSmoothing
 
 from util import DataSetSetting
 
 # TODO モデル・データセットはここを追加
 MODEL_PSPNET = "pspnet"
 MODEL_UNET = "unet"
-MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET]
+MODEL_SHELFNET = "shelfnet"
+MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_SHELFNET]
 SUBMODEL_RESNET = "resnet"
 SUBMODEL_TYPES = [SUBMODEL_RESNET]
 DATASET_VOC2012 = "voc2012"
@@ -36,7 +37,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = LabelAndDataTransforms([
         (Resize(setting.size), Resize(setting.size)), (ToTensor(), PilToTensor()),
-        (None, ImageToOneHot(setting.n_classes))
+        (None, ImageToOneHot(setting.n_classes)), (None, SegmentationLabelSmoothing(setting.n_classes))
     ])
     test_transforms = LabelAndDataTransforms([
         (Resize(setting.size), Resize(setting.size)), (ToTensor(), PilToTensor()),
@@ -70,8 +71,10 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submo
         return PSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=lr)
     elif MODEL_UNET == model_type:
         if submodel_type == "resnet":
-            return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes)
-        return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes)
+            return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
+        return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
+    elif MODEL_SHELFNET == model_type:
+        return ShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size)
     assert f"Invalid model type. Valid models is {MODEL_TYPES}"
 
 
