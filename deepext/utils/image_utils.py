@@ -1,4 +1,6 @@
 from typing import List, Iterable, Tuple
+from torchvision.transforms import ToPILImage
+import torch
 
 import cv2
 import numpy as np
@@ -97,3 +99,33 @@ def default_color_palette() -> List[int]:
             224, 32, 64, 96, 160, 64, 224, 160, 64, 96, 32, 192, 224, 32, 192, 96, 160, 192, 224, 160, 192, 32, 96, 64,
             160, 96, 64, 32, 224, 64, 160, 224, 64, 32, 96, 192, 160, 96, 192, 32, 224, 192, 160, 224, 192, 96, 96, 64,
             224, 96, 64, 96, 224, 64, 224, 224, 64, 96, 96, 192, 224, 96, 192, 96, 224, 192, 224, 224, 192]
+
+
+def pil_to_cv(image: Image.Image):
+    new_image = np.array(image, dtype=np.uint8)
+    if new_image.ndim == 2:  # モノクロ
+        return new_image
+    elif new_image.shape[2] == 3:  # カラー
+        return cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR)
+    elif new_image.shape[2] == 4:  # 透過
+        return cv2.cvtColor(new_image, cv2.COLOR_RGBA2BGRA)
+
+
+def cv_to_pil(image: np.ndarray):
+    new_image = image.copy()
+    if new_image.ndim == 2:  # モノクロ
+        return Image.fromarray(new_image)
+    elif new_image.shape[2] == 3:  # カラー
+        return cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB)
+    elif new_image.shape[2] == 4:  # 透過
+        return cv2.cvtColor(new_image, cv2.COLOR_BGRA2RGBA)
+    assert False, f"Invalid shape {new_image.shape}"
+
+
+def img_to_pil(img: Image.Image or torch.Tensor or np.ndarray):
+    if isinstance(img, torch.Tensor):
+        return ToPILImage()(img)
+    elif isinstance(img, np.ndarray):
+        return cv_to_pil(img)
+    else:
+        return img

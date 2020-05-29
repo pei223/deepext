@@ -28,11 +28,10 @@ class GenerateSegmentationImageCallback:
         data_len = len(self._dataset)
         random_image_index = np.random.randint(0, data_len)
         img_tensor, _ = self._dataset[random_image_index]
-        img = self._to_pil(img_tensor)
-        result_img = self._model.predict_one_image(img, self._color_palette)
 
-        result_img = transparent_only_black(result_img, self._alpha)
-        blend_result_and_source(np.array(img.convert('RGB')), np.array(result_img)).save(
+        result_img = self._model.draw_predicted_result(img_tensor, size=img_tensor.shape[1:],
+                                                       color_palette=self._color_palette)
+        result_img.save(
             f"{self._output_dir}/result_image{epoch + 1}.png")
 
 

@@ -1,6 +1,7 @@
 import argparse
 from typing import Tuple
-from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop
+from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop, RandomHorizontalFlip, RandomErasing, \
+    ColorJitter
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
@@ -36,8 +37,15 @@ settings = [DataSetSetting(dataset_type=DATASET_VOC2012, size=(256, 256), n_clas
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = LabelAndDataTransforms([
-        (Resize(setting.size), Resize(setting.size)), (ToTensor(), PilToTensor()),
-        (None, ImageToOneHot(setting.n_classes)), (None, SegmentationLabelSmoothing(setting.n_classes))
+        (Resize(setting.size), Resize(setting.size)),
+        (RandomHorizontalFlip(), RandomHorizontalFlip()),
+
+        (RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25)),
+         RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25))),
+        (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
+        (ToTensor(), PilToTensor()),
+        (RandomErasing(), RandomErasing()),
+        (None, ImageToOneHot(setting.n_classes)),
     ])
     test_transforms = LabelAndDataTransforms([
         (Resize(setting.size), Resize(setting.size)), (ToTensor(), PilToTensor()),

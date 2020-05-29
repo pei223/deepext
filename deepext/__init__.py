@@ -6,3 +6,4 @@ from .trainer import *
 from .base import *
 from .assemble import *
 from .object_detection import *
+from .camera import *
