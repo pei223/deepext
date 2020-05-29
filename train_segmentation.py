@@ -6,7 +6,7 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext import Trainer, BaseModel, LearningRateScheduler, LabelAndDataTransforms, PSPNet, UNet, ResUNet, ResPSPNet, \
-    ModelCheckout, ShelfNet
+    ModelCheckout, CustomShelfNet, ShelfNetRealtime
 from deepext.utils.tensor_util import try_cuda
 from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses
 from deepext.utils import *
@@ -17,8 +17,9 @@ from util import DataSetSetting
 # TODO モデル・データセットはここを追加
 MODEL_PSPNET = "pspnet"
 MODEL_UNET = "unet"
-MODEL_SHELFNET = "shelfnet"
-MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_SHELFNET]
+MODEL_SHELFNET_REALTIME = "shelfnet_realtime"
+MODEL_CUSTOM_SHELFNET = "custom_shelfnet"
+MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_CUSTOM_SHELFNET, MODEL_SHELFNET_REALTIME]
 SUBMODEL_RESNET = "resnet"
 SUBMODEL_TYPES = [SUBMODEL_RESNET]
 DATASET_VOC2012 = "voc2012"
@@ -39,12 +40,11 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     train_transforms = LabelAndDataTransforms([
         (Resize(setting.size), Resize(setting.size)),
         (RandomHorizontalFlip(), RandomHorizontalFlip()),
-
         (RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25)),
          RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25))),
         (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
         (ToTensor(), PilToTensor()),
-        (RandomErasing(), RandomErasing()),
+        # (RandomErasing(), RandomErasing()),
         (None, ImageToOneHot(setting.n_classes)),
     ])
     test_transforms = LabelAndDataTransforms([
@@ -81,8 +81,11 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submo
         if submodel_type == "resnet":
             return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
         return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
-    elif MODEL_SHELFNET == model_type:
-        return ShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size)
+    elif MODEL_CUSTOM_SHELFNET == model_type:
+        return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size)
+    elif MODEL_SHELFNET_REALTIME == model_type:
+        return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
+                                lr=lr)
     assert f"Invalid model type. Valid models is {MODEL_TYPES}"
 
 
@@ -125,8 +128,9 @@ if __name__ == "__main__":
     trainer = Trainer(model)
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
-                lr_scheduler_func=LearningRateScheduler(args.epoch),
-                metric_func_ls=[SegmentationIoUByClasses(dataset_setting.label_names)])
+                # lr_scheduler_func=LearningRateScheduler(args.epoch),
+                metric_func_ls=[SegmentationAccuracyByClasses(dataset_setting.label_names),
+                                SegmentationIoUByClasses(dataset_setting.label_names)])
 
     # Save weight.
     model.save_weight(save_weight_path)

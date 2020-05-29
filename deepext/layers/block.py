@@ -166,3 +166,29 @@ class SharedWeightResidualBlockWithDropBlock(nn.Module):
         out = self._bn2(out)
         out = out + input_
         return self._relu(out)
+
+
+class ChannelWiseAttentionBlock(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.conv = Conv2DBatchNormRelu(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1,
+                                        padding=1)
+        self.conv_attention = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=1, stride=1,
+                                        padding=0)
+        self.bn_attention = nn.BatchNorm2d(out_channels)
+        self.sigmoid_attention = nn.Sigmoid()
+        self.init_weight()
+
+    def forward(self, x):
+        feature = self.conv(x)
+        attention = F.avg_pool2d(feature, feature.size()[2:])
+        attention = self.conv_attention(attention)
+        attention = self.bn_attention(attention)
+        attention = self.sigmoid_attention(attention)
+        out = torch.mul(feature, attention)
+        return out
+
+    def init_weight(self):
+        for layer in self.children():
+            if isinstance(layer, nn.Conv2d):
+                nn.init.kaiming_normal_(layer.weight, a=1)

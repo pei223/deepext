@@ -5,7 +5,7 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext import Trainer, BaseModel, LearningRateScheduler, LabelAndDataTransforms, PSPNet, UNet, ResUNet, ResPSPNet, \
-    ModelCheckout, ShelfNet, RealtimeSegmentation
+    ModelCheckout, CustomShelfNet, RealtimeSegmentation
 from deepext.utils.tensor_util import try_cuda
 from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses
 from deepext.utils import *
@@ -16,7 +16,7 @@ from util import DataSetSetting
 # TODO モデル・データセットはここを追加
 MODEL_PSPNET = "pspnet"
 MODEL_UNET = "unet"
-MODEL_SHELFNET = "shelfnet"
+MODEL_SHELFNET = "custom_shelfnet"
 MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_SHELFNET]
 SUBMODEL_RESNET = "resnet"
 SUBMODEL_TYPES = [SUBMODEL_RESNET]
@@ -33,7 +33,7 @@ def get_model(n_classes, size, model_type: str, submodel_type: str = None):
             return ResUNet(n_input_channels=3, n_output_channels=n_classes)
         return UNet(n_input_channels=3, n_output_channels=n_classes)
     elif MODEL_SHELFNET == model_type:
-        return ShelfNet(n_classes=n_classes, out_size=size)
+        return CustomShelfNet(n_classes=n_classes, out_size=size)
     assert f"Invalid model type. Valid models is {MODEL_TYPES}"
 
 

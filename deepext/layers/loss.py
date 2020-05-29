@@ -114,3 +114,18 @@ class AdaptiveCrossEntropyLoss(nn.Module):
         if pred.ndim == 2 and teacher.ndim == 1:
             return F.cross_entropy(pred, teacher, reduction="mean")
         assert False, f"Invalid pred or teacher type,  {pred.shape} and {teacher.shape}"
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, gamma=2, weights: torch.Tensor = None):
+        # TODO Class weight対応
+        super().__init__()
+        self.gamma = gamma
+
+    def forward(self, pred, teacher):
+        logpt = -F.cross_entropy(pred, teacher.argmax(1))
+        pt = torch.exp(logpt)
+        # compute the loss
+        loss = -((1 - pt) ** self.gamma) * logpt
+        loss = loss.view(1, -1)
+        return loss.mean(dim=-1)
