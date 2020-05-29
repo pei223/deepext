@@ -209,4 +209,6 @@ dmypy.json
 /saved_weights
 .env.json
 
+lr_curve.png
+
 # End of https://www.gitignore.io/api/python,pycharm

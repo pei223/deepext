@@ -9,6 +9,11 @@ from ..base.metrics import Metrics
 
 SMOOTH = 1e-6
 
+KEY_BACKGROUND = "background"
+KEY_AVERAGE = "average"
+KEY_AVERAGE_WITHOUT_BACKGROUND = "average without background"
+KEY_TOTAL = "total"
+
 
 class SegmentationAccuracy(Metrics):
     def __init__(self):
@@ -33,13 +38,10 @@ class SegmentationAccuracy(Metrics):
     def clear(self):
         self.accuracies = []
 
-    def name(self):
-        return "segmentation accuracy"
-
 
 class SegmentationAccuracyByClasses(Metrics):
     def __init__(self, label_names: List[str]):
-        self.label_names = ["background", ] + label_names
+        self.label_names = [KEY_BACKGROUND, ] + label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
@@ -79,22 +81,19 @@ class SegmentationAccuracyByClasses(Metrics):
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
-        result["average"] = avg_acc / len(self.label_names)
-        result["average without background"] = (avg_acc - result["background"]) / (len(self.label_names) - 1)
-        result["total"] = total_correct / (total_correct + total_incorrect)
+        result[KEY_AVERAGE] = avg_acc / len(self.label_names)
+        result[KEY_AVERAGE_WITHOUT_BACKGROUND] = (avg_acc - result[KEY_BACKGROUND]) / (len(self.label_names) - 1)
+        result[KEY_TOTAL] = total_correct / (total_correct + total_incorrect)
         return list(result.items())
 
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
-    def name(self):
-        return "Segmentation accuracy by classes"
-
 
 class SegmentationIoUByClasses(Metrics):
     def __init__(self, label_names: List[str]):
-        self.label_names = ["background", ] + label_names
+        self.label_names = [KEY_BACKGROUND, ] + label_names
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
 
@@ -134,17 +133,14 @@ class SegmentationIoUByClasses(Metrics):
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
-        result["average"] = avg_iou / len(self.label_names)
-        result["average without background"] = (avg_iou - result["background"]) / (len(self.label_names) - 1)
-        result["total"] = total_overlap / total_union
+        result[KEY_AVERAGE] = avg_iou / len(self.label_names)
+        result[KEY_AVERAGE_WITHOUT_BACKGROUND] = (avg_iou - result[KEY_BACKGROUND]) / (len(self.label_names) - 1)
+        result[KEY_TOTAL] = total_overlap / total_union
         return list(result.items())
 
     def clear(self):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
-
-    def name(self):
-        return "Segmentation IoU by classes"
 
 
 class ClassificationAccuracy(Metrics):
@@ -167,9 +163,6 @@ class ClassificationAccuracy(Metrics):
 
     def clear(self):
         self.batch_accuracies = []
-
-    def name(self):
-        return "classification accuracy"
 
 
 class ClassificationAccuracyByClasses(Metrics):
@@ -208,16 +201,13 @@ class ClassificationAccuracyByClasses(Metrics):
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
-        result["total"] = total_correct / (total_correct + total_incorrect)
-        result["average"] = avg_acc / len(self.label_names)
+        result[KEY_TOTAL] = total_correct / (total_correct + total_incorrect)
+        result[KEY_AVERAGE] = avg_acc / len(self.label_names)
         return list(result.items())
 
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
-
-    def name(self) -> str:
-        return "Classification accuracy by classes"
 
 
 class DetectionIoUByClasses(Metrics):
@@ -258,8 +248,8 @@ class DetectionIoUByClasses(Metrics):
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
-        result["average"] = avg_iou / len(self.label_names)
-        result["total"] = total_overlap / total_union
+        result[KEY_AVERAGE] = avg_iou / len(self.label_names)
+        result[KEY_TOTAL] = total_overlap / total_union
         return list(result.items())
 
     def _calc_bbox_overlap_and_union(self, pred: np.ndarray or None, teacher: np.ndarray):
@@ -285,9 +275,6 @@ class DetectionIoUByClasses(Metrics):
     def clear(self):
         self.union_by_classes = [0 for i in range(len(self.label_names))]
         self.overlap_by_classes = [0 for i in range(len(self.label_names))]
-
-    def name(self):
-        return "Detection IoU by classes"
 
 
 # TODO 実装途中

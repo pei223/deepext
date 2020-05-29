@@ -108,7 +108,7 @@ if __name__ == "__main__":
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch),
-                metric_func_ls=[DetectionIoUByClasses(dataset_setting.label_names)])  # TODO 物体検出指標
+                metric_ls=[DetectionIoUByClasses(dataset_setting.label_names)])  # TODO 物体検出指標
 
     # Save weight.
     model.save_weight(save_weight_path)

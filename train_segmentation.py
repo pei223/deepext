@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 from deepext import Trainer, BaseModel, LearningRateScheduler, LabelAndDataTransforms, PSPNet, UNet, ResUNet, ResPSPNet, \
     ModelCheckout, CustomShelfNet, ShelfNetRealtime
 from deepext.utils.tensor_util import try_cuda
-from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses
+from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses, SegmentationAccuracy
 from deepext.utils import *
 from deepext.transforms import ImageToOneHot, PilToTensor, SegmentationLabelSmoothing
 
@@ -129,8 +129,10 @@ if __name__ == "__main__":
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 # lr_scheduler_func=LearningRateScheduler(args.epoch),
-                metric_func_ls=[SegmentationAccuracyByClasses(dataset_setting.label_names),
-                                SegmentationIoUByClasses(dataset_setting.label_names)])
+                metric_ls=[SegmentationAccuracyByClasses(dataset_setting.label_names),
+                           SegmentationIoUByClasses(dataset_setting.label_names)],
+                calc_metrics_per_epoch=5,
+                lr_graph_filepath="lr_curve.png", metric_for_graph=SegmentationAccuracy())
 
     # Save weight.
     model.save_weight(save_weight_path)

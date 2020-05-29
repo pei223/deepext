@@ -151,6 +151,7 @@ class SharedWeightResidualBlockWithDropBlock(nn.Module):
         self._bn1 = nn.BatchNorm2d(in_channels)
         self._dropblock = DropBlock2d(dropout_rate)
         self._bn2 = nn.BatchNorm2d(in_channels)
+        self.init_weight()
 
     def forward(self, lateral_input: torch.Tensor, vertical_input: torch.Tensor or None):
         """
@@ -166,6 +167,11 @@ class SharedWeightResidualBlockWithDropBlock(nn.Module):
         out = self._bn2(out)
         out = out + input_
         return self._relu(out)
+
+    def init_weight(self):
+        for layer in self.children():
+            if isinstance(layer, nn.Conv2d):
+                nn.init.kaiming_normal_(layer.weight, a=1)
 
 
 class ChannelWiseAttentionBlock(nn.Module):

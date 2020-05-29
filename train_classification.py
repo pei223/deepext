@@ -100,7 +100,7 @@ if __name__ == "__main__":
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch),
-                metric_func_ls=[ClassificationAccuracyByClasses(dataset_setting.label_names), ])
+                metric_ls=[ClassificationAccuracyByClasses(dataset_setting.label_names), ])
 
     # Save weight.
     model.save_weight(save_weight_path)

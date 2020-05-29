@@ -29,10 +29,6 @@ class Metrics:
         """
         pass
 
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
     def save_visualized_metrics(self, result, filepath: str, epoch: int):
         """
         指標を可視化して保存する

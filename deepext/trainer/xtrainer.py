@@ -9,6 +9,7 @@ from deepext.base import BaseModel
 from ..base import Metrics
 from deepext.assemble.learning_table import LearningTable
 from deepext.utils.tensor_util import try_cuda
+from .lrcurve_visualizer import LRCurveVisualizer
 
 
 class XTrainer:
@@ -16,9 +17,13 @@ class XTrainer:
         self._assemble_model: AssembleModel = models
 
     def fit(self, learning_tables: List[LearningTable], metric_func_ls: List[Metrics] = None,
-            test_dataloader: DataLoader = None):
+            test_dataloader: DataLoader = None, calc_metrics_per_epoch: int = 5,
+            lr_graph_filepath: str = None, metric_for_graph: Metrics = None):
         assert len(learning_tables) == len(self._assemble_model.model_list)
+        # TODO LRCurveとかMetricsをTrainerに合わせる
         metric_func_ls = metric_func_ls or []
+        lr_curve_visualizer = LRCurveVisualizer(
+            metric_name=metric_for_graph.__class__.__name__ if metric_for_graph else "")
         for i in range(len(learning_tables)):
             learning_table = learning_tables[i]
             model = self._assemble_model.model_list[i]
