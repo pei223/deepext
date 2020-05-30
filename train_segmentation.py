@@ -6,9 +6,9 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext import Trainer, BaseModel, LearningRateScheduler, LabelAndDataTransforms, PSPNet, UNet, ResUNet, ResPSPNet, \
-    ModelCheckout, CustomShelfNet, ShelfNetRealtime
+    ModelCheckout, CustomShelfNet, ShelfNetRealtime, LearningCurveVisualizer
 from deepext.utils.tensor_util import try_cuda
-from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses, SegmentationAccuracy
+from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses, SegmentationAccuracy, MetricKey
 from deepext.utils import *
 from deepext.transforms import ImageToOneHot, PilToTensor, SegmentationLabelSmoothing
 
@@ -24,7 +24,8 @@ SUBMODEL_RESNET = "resnet"
 SUBMODEL_TYPES = [SUBMODEL_RESNET]
 DATASET_VOC2012 = "voc2012"
 DATASET_VOC2007 = "voc2007"
-DATASET_TYPES = [DATASET_VOC2007, DATASET_VOC2012]
+DATASET_CITYSCAPE = "cityscape"
+DATASET_TYPES = [DATASET_VOC2007, DATASET_VOC2012, DATASET_CITYSCAPE]
 settings = [DataSetSetting(dataset_type=DATASET_VOC2012, size=(256, 256), n_classes=21,
                            label_names=["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair",
                                         "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
@@ -32,7 +33,11 @@ settings = [DataSetSetting(dataset_type=DATASET_VOC2012, size=(256, 256), n_clas
             DataSetSetting(dataset_type=DATASET_VOC2007, size=(256, 256), n_classes=21,
                            label_names=["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair",
                                         "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
-                                        "sheep", "sofa", "train", "tvmonitor"])]
+                                        "sheep", "sofa", "train", "tvmonitor"]),
+            DataSetSetting(dataset_type=DATASET_CITYSCAPE, size=(256, 256), n_classes=30,
+                           label_names=[
+
+                           ])]
 
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
@@ -128,11 +133,17 @@ if __name__ == "__main__":
     trainer = Trainer(model)
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
-                # lr_scheduler_func=LearningRateScheduler(args.epoch),
+                lr_scheduler_func=LearningRateScheduler(args.epoch) if not isinstance(model,
+                                                                                      ShelfNetRealtime) else None,
                 metric_ls=[SegmentationAccuracyByClasses(dataset_setting.label_names),
                            SegmentationIoUByClasses(dataset_setting.label_names)],
                 calc_metrics_per_epoch=5,
-                lr_graph_filepath="lr_curve.png", metric_for_graph=SegmentationAccuracy())
+                learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
+                                                                  ignore_epoch=5,
+                                                                  metric_for_graph=SegmentationIoUByClasses(
+                                                                      dataset_setting.label_names,
+                                                                      val_key=MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND),
+                                                                  save_filepath="learning_curve.png"))
 
     # Save weight.
     model.save_weight(save_weight_path)

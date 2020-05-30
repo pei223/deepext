@@ -9,7 +9,7 @@ from deepext.base import BaseModel
 from ..base import Metrics
 from deepext.assemble.learning_table import LearningTable
 from deepext.utils.tensor_util import try_cuda
-from .lrcurve_visualizer import LRCurveVisualizer
+from .learning_curve_visualizer import LearningCurveVisualizer
 
 
 class XTrainer:
@@ -22,7 +22,7 @@ class XTrainer:
         assert len(learning_tables) == len(self._assemble_model.model_list)
         # TODO LRCurveとかMetricsをTrainerに合わせる
         metric_func_ls = metric_func_ls or []
-        lr_curve_visualizer = LRCurveVisualizer(
+        lr_curve_visualizer = LearningCurveVisualizer(
             metric_name=metric_for_graph.__class__.__name__ if metric_for_graph else "")
         for i in range(len(learning_tables)):
             learning_table = learning_tables[i]

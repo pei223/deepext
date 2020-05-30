@@ -7,7 +7,7 @@ import seaborn as sns
 from pathlib import Path
 
 from .image_utils import *
-from ..base import SegmentationModel, BaseModel
+from ..base import SegmentationModel, BaseModel, DetectionModel
 from ..classifier import AttentionBranchNetwork
 
 
@@ -71,7 +71,7 @@ class GenerateAttentionMapCallback:
 
 
 class VisualizeRandomObjectDetectionResult:
-    def __init__(self, model: BaseModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str,
+    def __init__(self, model: DetectionModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str,
                  label_names: List[str], per_epoch: int = 10, pred_color=(0, 0, 255), teacher_color=(0, 255, 0)):
         """
         :param model:
@@ -98,12 +98,9 @@ class VisualizeRandomObjectDetectionResult:
         random_image_index = np.random.randint(0, data_len)
         image, teacher_bboxes = self._dataset[random_image_index]
         assert isinstance(image, torch.Tensor), "Expected image type is Tensor."
-        predict_result = self._model.predict(image.view((1,) + image.shape))[0]
-        image = image.detach().cpu().numpy() * 255
-        image = image.transpose(1, 2, 0)
-
-        image = self._draw_teacher_bboxes(image, teacher_bboxes=teacher_bboxes)
-        image = self._draw_result_bboxes(image, bboxes_by_class=predict_result)
+        result_img = self._model.draw_predicted_result(image, size=(image.shape[-2], image.shape[-1]),
+                                                       label_names=self._label_names)
+        image = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
         cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)
 
     def _draw_teacher_bboxes(self, image: np.ndarray, teacher_bboxes: List[Tuple[float, float, float, float, int]]):
@@ -117,21 +114,6 @@ class VisualizeRandomObjectDetectionResult:
         for bbox in teacher_bboxes:
             image = draw_bounding_boxes_with_name_tag(image, [bbox], color=self._teacher_color,
                                                       text=self._label_names[bbox[-1]])
-        return image
-
-    def _draw_result_bboxes(self, image: np.ndarray, bboxes_by_class: List[List[float]]):
-        """
-        :param image:
-        :param bboxes_by_class: [labels, N, coordinate(x_min, y_min, x_max, y_max, any)]
-        :return:
-        """
-        if bboxes_by_class is None:
-            return image
-        for i, bboxes in enumerate(bboxes_by_class):
-            if bboxes is None or len(bboxes) == 0:
-                continue
-            image = draw_bounding_boxes_with_name_tag(image, bboxes, color=self._pred_color,
-                                                      text=self._label_names[i])
         return image
 
 

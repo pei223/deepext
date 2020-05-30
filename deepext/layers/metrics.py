@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from typing import List
-
+from enum import Enum
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score
@@ -9,10 +9,13 @@ from ..base.metrics import Metrics
 
 SMOOTH = 1e-6
 
-KEY_BACKGROUND = "background"
-KEY_AVERAGE = "average"
-KEY_AVERAGE_WITHOUT_BACKGROUND = "average without background"
-KEY_TOTAL = "total"
+
+class MetricKey(Enum):
+    KEY_ALL = "all"
+    KEY_BACKGROUND = "background"
+    KEY_AVERAGE = "average"
+    KEY_AVERAGE_WITHOUT_BACKGROUND = "average without background"
+    KEY_TOTAL = "total"
 
 
 class SegmentationAccuracy(Metrics):
@@ -40,10 +43,11 @@ class SegmentationAccuracy(Metrics):
 
 
 class SegmentationAccuracyByClasses(Metrics):
-    def __init__(self, label_names: List[str]):
-        self.label_names = [KEY_BACKGROUND, ] + label_names
+    def __init__(self, label_names: List[str], val_key: MetricKey = None):
+        self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+        self._val_key = val_key
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -81,9 +85,12 @@ class SegmentationAccuracyByClasses(Metrics):
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
-        result[KEY_AVERAGE] = avg_acc / len(self.label_names)
-        result[KEY_AVERAGE_WITHOUT_BACKGROUND] = (avg_acc - result[KEY_BACKGROUND]) / (len(self.label_names) - 1)
-        result[KEY_TOTAL] = total_correct / (total_correct + total_incorrect)
+        result[MetricKey.KEY_AVERAGE.value] = avg_acc / len(self.label_names)
+        result[MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_acc - result[MetricKey.KEY_BACKGROUND.value]) / (
+                len(self.label_names) - 1)
+        result[MetricKey.KEY_TOTAL.value] = total_correct / (total_correct + total_incorrect)
+        if self._val_key:
+            return result[self._val_key.value]
         return list(result.items())
 
     def clear(self):
@@ -92,10 +99,11 @@ class SegmentationAccuracyByClasses(Metrics):
 
 
 class SegmentationIoUByClasses(Metrics):
-    def __init__(self, label_names: List[str]):
-        self.label_names = [KEY_BACKGROUND, ] + label_names
+    def __init__(self, label_names: List[str], val_key: MetricKey = None):
+        self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
+        self._val_key = val_key
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -133,9 +141,12 @@ class SegmentationIoUByClasses(Metrics):
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
-        result[KEY_AVERAGE] = avg_iou / len(self.label_names)
-        result[KEY_AVERAGE_WITHOUT_BACKGROUND] = (avg_iou - result[KEY_BACKGROUND]) / (len(self.label_names) - 1)
-        result[KEY_TOTAL] = total_overlap / total_union
+        result[MetricKey.KEY_AVERAGE.value] = avg_iou / len(self.label_names)
+        result[MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_iou - result[MetricKey.KEY_BACKGROUND.value]) / (
+                len(self.label_names) - 1)
+        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union
+        if self._val_key:
+            return result[self._val_key.value]
         return list(result.items())
 
     def clear(self):
@@ -166,10 +177,11 @@ class ClassificationAccuracy(Metrics):
 
 
 class ClassificationAccuracyByClasses(Metrics):
-    def __init__(self, label_names: List[str]):
+    def __init__(self, label_names: List[str], val_key: MetricKey = None):
         self.label_names = label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+        self._val_key = val_key
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         assert pred.ndim == 1 or pred.ndim == 2
@@ -201,8 +213,10 @@ class ClassificationAccuracyByClasses(Metrics):
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
-        result[KEY_TOTAL] = total_correct / (total_correct + total_incorrect)
-        result[KEY_AVERAGE] = avg_acc / len(self.label_names)
+        result[MetricKey.KEY_TOTAL.value] = total_correct / (total_correct + total_incorrect)
+        result[MetricKey.KEY_AVERAGE.value] = avg_acc / len(self.label_names)
+        if self._val_key:
+            return result[self._val_key.value]
         return list(result.items())
 
     def clear(self):
@@ -211,10 +225,11 @@ class ClassificationAccuracyByClasses(Metrics):
 
 
 class DetectionIoUByClasses(Metrics):
-    def __init__(self, label_names: List[str]):
+    def __init__(self, label_names: List[str], val_key: MetricKey = None):
         self.label_names = label_names
         self.union_by_classes = [0 for i in range(len(self.label_names))]
         self.overlap_by_classes = [0 for i in range(len(self.label_names))]
+        self._val_key = val_key
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -248,8 +263,10 @@ class DetectionIoUByClasses(Metrics):
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
-        result[KEY_AVERAGE] = avg_iou / len(self.label_names)
-        result[KEY_TOTAL] = total_overlap / total_union
+        result[MetricKey.KEY_AVERAGE.value] = avg_iou / len(self.label_names)
+        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union
+        if self._val_key:
+            return result[self._val_key.value]
         return list(result.items())
 
     def _calc_bbox_overlap_and_union(self, pred: np.ndarray or None, teacher: np.ndarray):

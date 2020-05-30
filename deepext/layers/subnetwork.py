@@ -135,7 +135,6 @@ class FeatureDecoder(nn.Module):
         self.classification = Conv2DBatchNormRelu(in_channels=int(in_channels / 16), out_channels=n_classes,
                                                   kernel_size=1, padding=0)
         self._upsampling = nn.UpsamplingBilinear2d(size=self._size)
-        self._output = nn.LogSoftmax(dim=1)
 
     def forward(self, x):
         x = self._upsampling1(x)
@@ -144,7 +143,6 @@ class FeatureDecoder(nn.Module):
         x = self.dropout1(x)
         x = self.classification(x)
         output = self._upsampling(x)
-        output = self._output(output)
         return output
 
 

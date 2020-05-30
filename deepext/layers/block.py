@@ -2,7 +2,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 import torch
 from deepext.layers.basic import Conv2DTrasnposeBatchNorm, Conv2DBatchNormRelu, BottleNeck, BottleNeckIdentity, \
-    DropBlock2d
+    DropBlock2d, Conv2DBatchNorm
 
 
 class ResidualBlock(nn.Module):
@@ -177,8 +177,8 @@ class SharedWeightResidualBlockWithDropBlock(nn.Module):
 class ChannelWiseAttentionBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
-        self.conv = Conv2DBatchNormRelu(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1,
-                                        padding=1)
+        self.conv = Conv2DBatchNorm(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1,
+                                    padding=1)
         self.conv_attention = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=1, stride=1,
                                         padding=0)
         self.bn_attention = nn.BatchNorm2d(out_channels)

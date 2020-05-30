@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from ...layers import Conv2DBatchNormRelu, SharedWeightResidualBlock, ChannelWiseAttentionBlock
+from ...layers import Conv2DBatchNormRelu, SharedWeightResidualBlock, ChannelWiseAttentionBlock, Conv2DBatchNorm
 
 
 class SegmentationShelf(nn.Module):
@@ -12,14 +12,14 @@ class SegmentationShelf(nn.Module):
             in_channels_ls = [64, 128, 256, 512]
         assert len(in_channels_ls) == 4
         super().__init__()
-        self._conv1x1_a = Conv2DBatchNormRelu(kernel_size=1, in_channels=in_channels_ls[0],
-                                              out_channels=in_channels_ls[0], padding=0)
-        self._conv1x1_b = Conv2DBatchNormRelu(kernel_size=1, in_channels=in_channels_ls[1],
-                                              out_channels=in_channels_ls[1], padding=0)
-        self._conv1x1_c = Conv2DBatchNormRelu(kernel_size=1, in_channels=in_channels_ls[2],
-                                              out_channels=in_channels_ls[2], padding=0)
-        self._conv1x1_d = Conv2DBatchNormRelu(kernel_size=1, in_channels=in_channels_ls[3],
-                                              out_channels=in_channels_ls[3], padding=0)
+        self._conv1x1_a = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[0],
+                                          out_channels=in_channels_ls[0], padding=0)
+        self._conv1x1_b = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[1],
+                                          out_channels=in_channels_ls[1], padding=0)
+        self._conv1x1_c = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[2],
+                                          out_channels=in_channels_ls[2], padding=0)
+        self._conv1x1_d = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[3],
+                                          out_channels=in_channels_ls[3], padding=0)
         self._decoder = Decoder()
         self._encoder = Encoder()
         self._final_decoder = Decoder()
@@ -65,14 +65,14 @@ class Decoder(nn.Module):
         self._sblock_a = SharedWeightResidualBlock(in_channels=in_channels_ls[0])
 
         self._attention_d2c = ChannelWiseAttentionBlock(in_channels=in_channels_ls[3], out_channels=in_channels_ls[2])
-        self._dense_d2c = Conv2DBatchNormRelu(in_channels=in_channels_ls[2], out_channels=in_channels_ls[2],
-                                              kernel_size=3, stride=1, padding=1)
+        self._dense_d2c = Conv2DBatchNorm(in_channels=in_channels_ls[2], out_channels=in_channels_ls[2],
+                                          kernel_size=3, stride=1, padding=1)
         self._attention_c2b = ChannelWiseAttentionBlock(in_channels=in_channels_ls[2], out_channels=in_channels_ls[1])
-        self._dense_c2b = Conv2DBatchNormRelu(in_channels=in_channels_ls[1], out_channels=in_channels_ls[1],
-                                              kernel_size=3, stride=1, padding=1)
+        self._dense_c2b = Conv2DBatchNorm(in_channels=in_channels_ls[1], out_channels=in_channels_ls[1],
+                                          kernel_size=3, stride=1, padding=1)
         self._attention_b2a = ChannelWiseAttentionBlock(in_channels=in_channels_ls[1], out_channels=in_channels_ls[0])
-        self._dense_b2a = Conv2DBatchNormRelu(in_channels=in_channels_ls[0], out_channels=in_channels_ls[0],
-                                              kernel_size=3, stride=1, padding=1)
+        self._dense_b2a = Conv2DBatchNorm(in_channels=in_channels_ls[0], out_channels=in_channels_ls[0],
+                                          kernel_size=3, stride=1, padding=1)
 
         # self._upconv_d2c = nn.ConvTranspose2d(in_channels=in_channels_ls[3], out_channels=in_channels_ls[2],
         #                                       kernel_size=2, stride=2)

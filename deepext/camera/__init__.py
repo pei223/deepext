@@ -1,1 +1,2 @@
 from .realtime_segmentation import RealtimeSegmentation
+from .realtime_detection import RealtimeDetection

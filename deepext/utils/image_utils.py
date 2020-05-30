@@ -129,3 +129,11 @@ def img_to_pil(img: Image.Image or torch.Tensor or np.ndarray):
         return cv_to_pil(img)
     else:
         return img
+
+
+def img_to_cv2(img: Image.Image or torch.Tensor or np.ndarray):
+    if isinstance(img, torch.Tensor):
+        return img.transpose(1, 2, 0)
+    if isinstance(img, Image.Image):
+        return cv_to_pil(img)
+    return img
