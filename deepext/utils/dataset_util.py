@@ -40,8 +40,9 @@ class LabelAndDataTransforms:
     def __call__(self, img, label):
         for i in range(len(self._transform_sets)):
             seed = random.randint(0, 2 ** 32)
-            random.seed(seed)
             data_transform, label_transform = self._transform_sets[i]
+            random.seed(seed)
             img = data_transform(img) if data_transform is not None else img
+            random.seed(seed)
             label = label_transform(label) if label_transform is not None else label
         return img, label

@@ -144,6 +144,5 @@ if __name__ == "__main__":
                                                                       dataset_setting.label_names,
                                                                       val_key=MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND),
                                                                   save_filepath="learning_curve.png"))
-
     # Save weight.
     model.save_weight(save_weight_path)
