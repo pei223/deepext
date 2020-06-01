@@ -117,7 +117,7 @@ class UpSamplingBlock(nn.Module):
 
 
 class SharedWeightResidualBlock(nn.Module):
-    def __init__(self, in_channels: int, dropout_rate=0.3):
+    def __init__(self, in_channels: int, dropout_rate=0.1):
         super().__init__()
         self.shared_conv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, stride=1,
                                      padding=1)

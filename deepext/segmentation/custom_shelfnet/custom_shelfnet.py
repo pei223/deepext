@@ -16,7 +16,7 @@ class CustomShelfNet(SegmentationModel):
         super().__init__()
         self._n_classes = n_classes
         self._model: nn.Module = ShelfNetModel(n_classes=n_classes, out_size=out_size, in_channels=in_channels)
-        self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters(), weight_decay=5e-4)
+        self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
         # self._loss_func = FocalLoss()
         self._loss_func = SegmentationTypedLoss(loss_type=loss_type)
 

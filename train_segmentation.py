@@ -47,7 +47,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
         (RandomHorizontalFlip(), RandomHorizontalFlip()),
         (RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25)),
          RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25))),
-        (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
+        # (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
         (ToTensor(), PilToTensor()),
         # (RandomErasing(), RandomErasing()),
         (None, ImageToOneHot(setting.n_classes)),
@@ -142,7 +142,7 @@ if __name__ == "__main__":
                                                                   ignore_epoch=5,
                                                                   metric_for_graph=SegmentationIoUByClasses(
                                                                       dataset_setting.label_names,
-                                                                      val_key=MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND),
+                                                                      val_key=MetricKey.KEY_AVERAGE),
                                                                   save_filepath="learning_curve.png"))
     # Save weight.
     model.save_weight(save_weight_path)

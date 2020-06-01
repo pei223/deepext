@@ -44,6 +44,21 @@ class LearningRateScheduler:
         return math.pow((1 - epoch / self._max_epoch), self._power)
 
 
+class WarmUpLRScheduler:
+    def __init__(self, warmup_lr=1e-2, lr=1e-4, warmup_epochs=10):
+        """
+        :param warmup_lr: Warm up中の学習率
+        :param lr: Warm up終了後の学習率
+        :param warmup_epochs: 何エポックまでをWarm up期間とするか
+        """
+        self._warmup_lr = warmup_lr
+        self._warmup_epochs = warmup_epochs
+        self._lr = lr
+
+    def __call__(self, epoch: int):
+        return self._warmup_lr if epoch < self._warmup_epochs else self._lr
+
+
 class GenerateAttentionMapCallback:
     def __init__(self, output_dir: str, per_epoch: int, dataset: Dataset, model: AttentionBranchNetwork):
         self._out_dir, self._per_epoch, self._dataset = output_dir, per_epoch, dataset

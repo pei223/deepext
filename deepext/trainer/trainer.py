@@ -45,11 +45,15 @@ class Trainer:
             # 指標算出
             if (epoch + 1) % calc_metrics_per_epoch == 0:
                 metric_for_graph = learning_curve_visualizer.metric_for_graph if learning_curve_visualizer else None
-                print(self.calc_metrics(test_dataloader, metric_ls, metric_for_graph))
+                # print("\nTrain Metrics\n" + self.calc_metrics(data_loader, metric_ls, metric_for_graph))
+                # train_metric_val_for_graph = metric_for_graph.calc_summary() if metric_for_graph else None
+                print("\nTest Metrics \n" + self.calc_metrics(test_dataloader, metric_ls, metric_for_graph))
                 if learning_curve_visualizer:
-                    metric_val_for_graph = metric_for_graph.calc_summary()
-                    learning_curve_visualizer.add_metric(metric_val_for_graph,
-                                                         calc_metric_per_epoch=calc_metrics_per_epoch)
+                    metric_test_val_for_graph = metric_for_graph.calc_summary()
+                    learning_curve_visualizer.add_metrics(test_metric=metric_test_val_for_graph,
+                                                          train_metric=None,
+                                                          # train_metric=train_metric_val_for_graph,
+                                                          calc_metric_per_epoch=calc_metrics_per_epoch)
                     learning_curve_visualizer.save_graph_image()
             for callback in callbacks:
                 callback(epoch)
