@@ -29,7 +29,7 @@ class GenerateSegmentationImageCallback:
         random_image_index = np.random.randint(0, data_len)
         img_tensor, _ = self._dataset[random_image_index]
 
-        result_img = self._model.draw_predicted_result(img_tensor, size=img_tensor.shape[1:],
+        result_img = self._model.draw_predicted_result(img_tensor, img_size_for_model=img_tensor.shape[1:],
                                                        color_palette=self._color_palette)
         result_img.save(
             f"{self._output_dir}/result_image{epoch + 1}.png")
@@ -113,7 +113,7 @@ class VisualizeRandomObjectDetectionResult:
         random_image_index = np.random.randint(0, data_len)
         image, teacher_bboxes = self._dataset[random_image_index]
         assert isinstance(image, torch.Tensor), "Expected image type is Tensor."
-        result_img = self._model.draw_predicted_result(image, size=(image.shape[-2], image.shape[-1]),
+        result_img = self._model.draw_predicted_result(image, img_size_for_model=(image.shape[-2], image.shape[-1]),
                                                        label_names=self._label_names)
         image = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
         cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)

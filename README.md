@@ -33,6 +33,12 @@ python train_detection.py --progress_dir="途中経過出力先ディレクト�
 python train_segmentation.py --progress_dir="途中経過出力先ディレクトリ" --dataset_root="Pascal VOCデータセット2007のパス(tarファイル) --moodel=pspnet --dataset=voc2007"
 ```
 
+<br/>
+
+### カメラを用いたリアルタイム推論
+```
+python camera_demo.py --model=custom_shelfnet  --n_classes=21 --load_weight_path=saved_weights\CustomShelfNet_ep100.pth --image_size=512
+```
 
 <br/><br/>
 

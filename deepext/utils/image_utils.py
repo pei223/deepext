@@ -49,7 +49,7 @@ def draw_bounding_boxes_with_name_tag(origin_image: np.ndarray, bounding_boxes: 
             y_min *= height
             y_max *= height
         x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-        image = cv2.rectangle(image, (x_min, y_min, x_max, y_max), color, thickness)
+        image = cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, thickness)
         image = draw_text_with_background(image, text=text, offsets=(x_min, y_min), background_color=color)
     return image
 
@@ -116,9 +116,9 @@ def cv_to_pil(image: np.ndarray):
     if new_image.ndim == 2:  # モノクロ
         return Image.fromarray(new_image)
     elif new_image.shape[2] == 3:  # カラー
-        return cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB))
     elif new_image.shape[2] == 4:  # 透過
-        return cv2.cvtColor(new_image, cv2.COLOR_BGRA2RGBA)
+        return Image.fromarray(cv2.cvtColor(new_image, cv2.COLOR_BGRA2RGBA))
     assert False, f"Invalid shape {new_image.shape}"
 
 
@@ -133,7 +133,29 @@ def img_to_pil(img: Image.Image or torch.Tensor or np.ndarray):
 
 def img_to_cv2(img: Image.Image or torch.Tensor or np.ndarray):
     if isinstance(img, torch.Tensor):
-        return img.transpose(1, 2, 0)
+        return (img.permute(1, 2, 0).detach().numpy() * 255).astype('uint32')
     if isinstance(img, Image.Image):
-        return cv_to_pil(img)
+        return pil_to_cv(img)
     return img
+
+
+def resize_image(img: Image.Image or torch.Tensor or np.ndarray, size: Tuple[int, int]):
+    """
+    NOTE Tensorオブジェクトならリサイズ不能のためそのまま返す.
+    :param img:
+    :param size:
+    """
+    if isinstance(img, Image.Image):
+        return img.resize(size)
+    elif isinstance(img, np.ndarray):
+        return cv2.resize(img, size)
+    print("Resizing tensor is not enable.")
+    return img
+
+
+def get_image_size(img: Image.Image or torch.Tensor or np.ndarray):
+    if isinstance(img, Image.Image):
+        return img.size
+    elif isinstance(img, np.ndarray):
+        return img.shape[:2]
+    return img.shape[1:]

@@ -83,6 +83,7 @@ parser.add_argument('--model', type=str, default=MODEL_EFFICIENT_DET, help=f"Mod
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--efficientdet_scale', type=int, default=0, help="Number of scale of EfficientDet.")
+parser.add_argument('--image_size', type=int, default=256, help="Image size(default is 256)")
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -91,6 +92,9 @@ if __name__ == "__main__":
     dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
+    img_size = (args.image_size, args.image_size)
+    dataset_setting.set_size(img_size)
+
     # Fetch model and load weight.
     model: BaseModel = try_cuda(
         get_model(dataset_setting, model_type=args.model, lr=args.lr, efficientdet_scale=args.efficientdet_scale))
@@ -109,6 +113,5 @@ if __name__ == "__main__":
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch),
                 metric_ls=[DetectionIoUByClasses(dataset_setting.label_names)])  # TODO 物体検出指標
-
     # Save weight.
     model.save_weight(save_weight_path)

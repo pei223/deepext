@@ -52,7 +52,7 @@ if __name__ == "__main__":
     model.load_weight(args.load_weight_path)
 
     if isinstance(model, SegmentationModel):
-        RealtimeSegmentation(model=model, img_size=(args.image_size, args.image_size)).realtime_predict()
+        RealtimeSegmentation(model=model, img_size_for_model=(args.image_size, args.image_size)).realtime_predict()
     elif isinstance(model, DetectionModel):
         assert args.label_names_path is not None
         with open(args.label_names_path, "r") as file:
@@ -60,5 +60,5 @@ if __name__ == "__main__":
             for label in file:
                 label_names.append(label)
         assert len(label_names) != 0
-        RealtimeDetection(model=model, img_size=(args.image_size, args.image_size),
+        RealtimeDetection(model=model, img_size_for_model=(args.image_size, args.image_size),
                           label_names=label_names).realtime_predict()
