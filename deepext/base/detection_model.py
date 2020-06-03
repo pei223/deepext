@@ -35,9 +35,24 @@ class DetectionModel(BaseModel):
         print(img.shape, img.dtype)
         return self._draw_result_bboxes(img, bboxes_by_class=result, label_names=label_names, pred_color=pred_color)
 
-    def _scale_bboxes(self, bboxes, origin_size: Tuple[int, int], to_size: Tuple[int, int]):
-        # TODO
-        return bboxes
+    def _scale_bboxes(self, bboxes_by_class: List[List[List[float]]], origin_size: Tuple[int, int],
+                      to_size: Tuple[int, int]):
+        height_rate = to_size[0] / origin_size[0]
+        width_rate = to_size[1] / origin_size[1]
+        if bboxes_by_class is None:
+            return bboxes_by_class
+        for cls in range(len(bboxes_by_class)):
+            print(bboxes_by_class[cls])
+            if bboxes_by_class[cls] is None or len(bboxes_by_class[cls]) == 0:
+                continue
+            for i in range(len(bboxes_by_class[cls])):
+                bboxes_by_class[cls][i][0], bboxes_by_class[cls][i][2] = bboxes_by_class[cls][i][0] * width_rate, \
+                                                                         bboxes_by_class[cls][i][
+                                                                             2] * width_rate
+                bboxes_by_class[cls][i][1], bboxes_by_class[cls][i][3] = bboxes_by_class[cls][i][1] * height_rate, \
+                                                                         bboxes_by_class[cls][i][
+                                                                             3] * height_rate
+        return bboxes_by_class
 
     def _draw_result_bboxes(self, image: np.ndarray, bboxes_by_class: List[List[float]], label_names: List[str],
                             pred_color=(0, 0, 255)):

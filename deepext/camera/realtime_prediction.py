@@ -16,29 +16,28 @@ class RealtimePrediction:
         self.is_running = False
 
     def realtime_predict(self, device_id=0, fps=10):
-        video = cv2.VideoCapture(device_id, cv2.CAP_DSHOW)
-        video.set(cv2.CAP_PROP_FPS, fps)
+        capture = cv2.VideoCapture(device_id, cv2.CAP_DSHOW)
+        capture.set(cv2.CAP_PROP_FPS, fps)
 
-        # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        frame_size = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-        # out = cv2.VideoWriter('./output.mp4', apiPreference=cv2.CAP_INTEL_MFX, fourcc=fourcc, fps=fps,
-        #                       frameSize=frame_size)  # 動画書込準備
+        # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+        # frame_size = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        # video_writer = cv2.VideoWriter('output.mp4', fourcc, fps, frame_size)  # 動画書込準備
 
         self.is_running = True
-        while video.isOpened() and self.is_running:
-            ret, frame = video.read()
+        while capture.isOpened() and self.is_running:
+            ret, frame = capture.read()
             if not ret:
                 print("Failed to read frame.")
                 break
             result_img = self.calc_result(frame)
-            # out.write(result_img)
+            # video_writer.write(result_img)
             cv2.imshow('frame', result_img)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 print("Keyboard q pushed.")
                 break
-        video.release()
-        # out.release()
+        capture.release()
+        # video_writer.release()
         cv2.destroyAllWindows()
 
     @abstractmethod

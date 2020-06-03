@@ -1,7 +1,7 @@
 import argparse
 from typing import Tuple
 from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop, RandomHorizontalFlip, RandomErasing, \
-    ColorJitter
+    ColorJitter, RandomRotation
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
@@ -34,9 +34,13 @@ settings = [DataSetSetting(dataset_type=DATASET_VOC2012, size=(256, 256), n_clas
                            label_names=["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair",
                                         "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
                                         "sheep", "sofa", "train", "tvmonitor"]),
-            DataSetSetting(dataset_type=DATASET_CITYSCAPE, size=(256, 256), n_classes=30,
+            DataSetSetting(dataset_type=DATASET_CITYSCAPE, size=(256, 512), n_classes=34,
                            label_names=[
-
+                               'ego vehicle', 'rectification', 'out of roi', 'static', 'dynamic', 'ground', 'road',
+                               'sidewalk', 'parking', 'rail track', 'building', 'wall', 'fence', 'guard rail', 'bridge',
+                               'tunnel', 'pole', 'polegroup', 'traffic light', 'traffic sign', 'vegetation', 'terrain',
+                               'sky', 'person', 'rider', 'car', 'truck', 'bus', 'caravan', 'trailer', 'train',
+                               'motorcycle', 'bicycle', 'license plate'
                            ])]
 
 
@@ -45,8 +49,9 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     train_transforms = LabelAndDataTransforms([
         (Resize(setting.size), Resize(setting.size)),
         (RandomHorizontalFlip(), RandomHorizontalFlip()),
-        (RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25)),
-         RandomResizedCrop(size=dataset_setting.size, scale=(0.7, 1.25))),
+        (RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0)),
+         RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0))),
+        (RandomRotation((-10, 10)), RandomRotation((-10, 10))),
         # (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
         (ToTensor(), PilToTensor()),
         # (RandomErasing(), RandomErasing()),
@@ -71,6 +76,11 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
                                                              image_set='train', transforms=train_transforms)
         test_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year='2007',
                                                             image_set='trainval', transforms=test_transforms)
+    elif DATASET_CITYSCAPE == setting.dataset_type:
+        train_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="train", target_type='semantic',
+                                                        transforms=train_transforms)
+        test_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="test", target_type='semantic',
+                                                       transforms=test_transforms)
     assert train_dataset is not None and test_dataset is not None, f"Not supported setting: {setting.dataset_type}"
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=True), train_dataset, test_dataset
@@ -105,7 +115,7 @@ parser.add_argument('--progress_dir', type=str, default=None, help='Directory fo
 parser.add_argument('--model', type=str, default=MODEL_PSPNET, help=f"Model type in {MODEL_TYPES}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
-parser.add_argument('--image_size', type=int, default=256, help="Image size(default is 256)")
+parser.add_argument('--image_size', type=int, default=None, help="Image size(default is 256)")
 parser.add_argument('--submodel', type=str, default=None, help=f'Type of model in {SUBMODEL_TYPES}')
 
 if __name__ == "__main__":
@@ -113,8 +123,9 @@ if __name__ == "__main__":
 
     # Fetch dataset.
     dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
-    img_size = (args.image_size, args.image_size)
-    dataset_setting.set_size(img_size)
+    if args.image_size:
+        img_size = (args.image_size, args.image_size)
+        dataset_setting.set_size(img_size)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
     # Fetch model and load weight.
