@@ -11,7 +11,6 @@ from deepext.utils.tensor_util import try_cuda
 from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses, SegmentationAccuracy, MetricKey
 from deepext.utils import *
 from deepext.transforms import ImageToOneHot, PilToTensor, SegmentationLabelSmoothing
-
 from util import DataSetSetting
 
 # TODO モデル・データセットはここを追加
@@ -47,18 +46,18 @@ settings = [DataSetSetting(dataset_type=DATASET_VOC2012, size=(256, 256), n_clas
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = LabelAndDataTransforms([
-        (Resize(setting.size), Resize(setting.size)),
         (RandomHorizontalFlip(), RandomHorizontalFlip()),
         (RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0)),
          RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0))),
         (RandomRotation((-10, 10)), RandomRotation((-10, 10))),
-        # (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
+        (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
         (ToTensor(), PilToTensor()),
-        # (RandomErasing(), RandomErasing()),
+        (RandomErasing(), RandomErasing()),
         (None, ImageToOneHot(setting.n_classes)),
     ])
     test_transforms = LabelAndDataTransforms([
-        (Resize(setting.size), Resize(setting.size)), (ToTensor(), PilToTensor()),
+        (Resize(setting.size), Resize(setting.size)),
+        (ToTensor(), PilToTensor()),
         (None, ImageToOneHot(setting.n_classes))
     ])
     train_dataset, test_dataset = None, None
@@ -97,7 +96,8 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submo
             return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
         return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
     elif MODEL_CUSTOM_SHELFNET == model_type:
-        return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size)
+        return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size,
+                              loss_type="ce", backbone=submodel_type)
     elif MODEL_SHELFNET_REALTIME == model_type:
         return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
                                 lr=lr)
@@ -150,7 +150,7 @@ if __name__ == "__main__":
                            SegmentationIoUByClasses(dataset_setting.label_names)],
                 calc_metrics_per_epoch=5,
                 learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
-                                                                  ignore_epoch=5,
+                                                                  ignore_epoch=0,
                                                                   metric_for_graph=SegmentationIoUByClasses(
                                                                       dataset_setting.label_names,
                                                                       val_key=MetricKey.KEY_AVERAGE),

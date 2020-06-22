@@ -12,25 +12,13 @@ class SegmentationShelf(nn.Module):
             in_channels_ls = [64, 128, 256, 512]
         assert len(in_channels_ls) == 4
         super().__init__()
-        self._conv1x1_a = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[0],
-                                          out_channels=in_channels_ls[0], padding=0)
-        self._conv1x1_b = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[1],
-                                          out_channels=in_channels_ls[1], padding=0)
-        self._conv1x1_c = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[2],
-                                          out_channels=in_channels_ls[2], padding=0)
-        self._conv1x1_d = Conv2DBatchNorm(kernel_size=1, in_channels=in_channels_ls[3],
-                                          out_channels=in_channels_ls[3], padding=0)
-        self._decoder = Decoder()
-        self._encoder = Encoder()
-        self._final_decoder = Decoder()
+        self._decoder = Decoder(in_channels_ls=in_channels_ls)
+        self._encoder = Encoder(in_channels_ls=in_channels_ls)
+        self._final_decoder = Decoder(in_channels_ls=in_channels_ls)
 
     def forward(self, inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]):
         assert len(inputs) == 4
         input_a, input_b, input_c, input_d = inputs
-        input_a = self._conv1x1_a(input_a)
-        input_b = self._conv1x1_b(input_b)
-        input_c = self._conv1x1_c(input_c)
-        input_d = self._conv1x1_d(input_d)
 
         dec_outputs = self._decoder((input_a, input_b, input_c, input_d))
         enc_outputs = self._encoder(dec_outputs)

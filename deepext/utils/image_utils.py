@@ -133,7 +133,7 @@ def img_to_pil(img: Image.Image or torch.Tensor or np.ndarray):
 
 def img_to_cv2(img: Image.Image or torch.Tensor or np.ndarray):
     if isinstance(img, torch.Tensor):
-        return (img.permute(1, 2, 0).detach().numpy() * 255).astype('uint32')
+        return (img.permute(1, 2, 0).detach().numpy() * 255).astype('uint8')
     if isinstance(img, Image.Image):
         return pil_to_cv(img)
     return img

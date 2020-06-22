@@ -46,27 +46,36 @@ class DiceLossWithAreaPenalty(torch.nn.Module):
         :param smooth:
         :return:
         """
-        intersection = (pred * teacher).sum((-1, -2)).mean((0,))
-        pred = pred.contiguous().view(pred.shape[1], -1)
-        teacher = teacher.contiguous().view(teacher.shape[1], -1)
-        pred_sum = pred.sum((-1,))
-        teacher_sum = teacher.sum((-1,))
-        return (1 - ((2. * intersection + smooth) / (pred_sum + teacher_sum + smooth))).mean()
+        pred = F.normalize(pred - pred.min(), 1)
+        # print("pred", pred.sum(1, ))
 
-        # total = torch.sum(teacher * teacher).type('torch.DoubleTensor')
-        # teacher_areas_by_class = teacher.sum(axis=[0, -1, -2]).type('torch.DoubleTensor')
-        # penalty = (total - teacher_areas_by_class) / total
-        #
-        # intersections_by_class = (pred * teacher).sum(axis=[0, -1, -2, ])
-        # pred_sum, teacher_sum = torch.sum(pred * pred), torch.sum(teacher * teacher)
-        #
-        # return 1 - ((2. * (intersections_by_class).sum() + smooth) / (pred_sum + teacher_sum + smooth))
+        intersection = (pred * teacher.float()).sum((-1, -2))
+        pred = pred.contiguous().view(pred.shape[0], pred.shape[1], -1)
+        teacher = teacher.contiguous().view(teacher.shape[0], teacher.shape[1], -1)
+
+        total_area = float(teacher.shape[-1])
+        area_by_classes = teacher.long().sum(-1, )
+        weight_by_classes = (total_area - area_by_classes.float()) / total_area
+        # print("weight by class", weight_by_classes)
+
+        pred_sum = pred.sum((-1,))
+        teacher_sum = teacher.long().sum((-1,))
+        # Batch * Classes
+        dice_loss = 1. - ((2. * intersection + smooth) / (pred_sum + teacher_sum.float() + smooth))
+        dice_loss[dice_loss != dice_loss] = 1.
+        # print("dice loss", dice_loss)
+        weighted_dice_loss = (dice_loss * weight_by_classes).mean(-1, )  # Batch,
+        # print("weighted_dice", weighted_dice_loss)
+
+        loss = weighted_dice_loss.mean(0, )
+        # print(loss)
+        return loss if not torch.isnan(loss) else 1.0
 
 
 class SegmentationTypedLoss(nn.Module):
     def __init__(self, loss_type: str):
         super(SegmentationTypedLoss, self).__init__()
-        assert loss_type.lower() in ["ce+dice", "dice", "ce", ]
+        assert loss_type.lower() in ["ce+dice", "dice", "ce", "weighted_dice"]
         self._loss_type = loss_type.lower()
 
     def forward(self, pred: torch.Tensor, teacher: torch.Tensor):
@@ -81,6 +90,8 @@ class SegmentationTypedLoss(nn.Module):
             return AdaptiveCrossEntropyLoss()(pred, teacher)
         if self._loss_type == "dice":
             return DiceLoss()(pred, teacher)
+        if self._loss_type == "weighted_dice":
+            return DiceLossWithAreaPenalty()(pred, teacher)
 
 
 class AuxiliarySegmentationLoss(nn.Module):
