@@ -1,8 +1,9 @@
 from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor, Resize, RandomHorizontalFlip, RandomResizedCrop, Compose, ToPILImage
+from torchvision.transforms import Resize, RandomHorizontalFlip, RandomResizedCrop, Compose
 import json
 
 from deepext import singan
+from deepext.data.dataset.gan import SimpleGANDataSet
 
 from deepext.utils import *
 

@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler, \
     ModelCheckout
 from deepext.utils.tensor_util import try_cuda
-from deepext.metrics import ClassificationAccuracy, ClassificationAccuracyByClasses
+from deepext.metrics import ClassificationAccuracyByClasses
 from deepext.utils import *
 
 from util import DataSetSetting

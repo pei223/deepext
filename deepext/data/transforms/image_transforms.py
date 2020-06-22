@@ -1,3 +1,6 @@
+import random
+from typing import List, Tuple
+
 import torch
 from torchvision.transforms import ToTensor
 import numpy as np
@@ -56,3 +59,21 @@ class ClassificationLabelSmoothing:
         if label.ndim == 1:
             label = self._to_onehot(label)
         return label * (1. - self._epsilon) + self._epsilon
+
+
+class LabelAndDataTransforms:
+    def __init__(self, transform_sets=List[Tuple[any, any]]):
+        """
+        :param transform_sets: list of data and label transforms [(data_transform, label_transform), ...]
+        """
+        self._transform_sets = transform_sets
+
+    def __call__(self, img, label):
+        for i in range(len(self._transform_sets)):
+            seed = random.randint(0, 2 ** 32)
+            data_transform, label_transform = self._transform_sets[i]
+            random.seed(seed)
+            img = data_transform(img) if data_transform is not None else img
+            random.seed(seed)
+            label = label_transform(label) if label_transform is not None else label
+        return img, label

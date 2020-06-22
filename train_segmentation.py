@@ -6,9 +6,10 @@ from torch.utils.data import DataLoader
 
 from deepext import Trainer, PSPNet, UNet, ResUNet, ResPSPNet, \
     CustomShelfNet, ShelfNetRealtime, LearningCurveVisualizer
+from deepext.data.transforms.image_transforms import LabelAndDataTransforms
 from deepext.metrics import SegmentationAccuracyByClasses, SegmentationIoUByClasses, MetricKey
 from deepext.utils import *
-from deepext.transforms import ImageToOneHot, PilToTensor
+from deepext.data.transforms import ImageToOneHot, PilToTensor
 from util import DataSetSetting
 
 # TODO モデル・データセットはここを追加

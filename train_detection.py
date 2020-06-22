@@ -1,13 +1,12 @@
 import argparse
-from torchvision.transforms import ToTensor, Resize, Compose
+from torchvision.transforms import Resize, Compose
 import torchvision
 from torch.utils.data import DataLoader
 
-from deepext import Trainer, EfficientDetector, M2Det, ModelCheckout
-from deepext.utils.dataset.detection import ObjectDetectionCollator, VOCAnnotationTransform
+from deepext import Trainer, EfficientDetector, M2Det
 from deepext.utils import *
 from deepext.metrics import DetectionIoUByClasses
-
+from deepext.data.dataset import VOCAnnotationTransform, ObjectDetectionCollator
 from util import DataSetSetting
 
 # TODO モデル・データセットはここを追加
