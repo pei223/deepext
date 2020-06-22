@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler, \
     AssembleModel, XTrainer, LearningTable
 from deepext.utils.tensor_util import try_cuda
-from deepext.layers import ClassificationAccuracy
+from deepext.metrics import ClassificationAccuracyByClasses
 from deepext.utils import *
 
 from util import DataSetSetting
@@ -93,7 +93,8 @@ if __name__ == "__main__":
 
     # Training.
     trainer = XTrainer(assemble_model)
-    trainer.fit(test_dataloader=test_dataloader, metric_func_ls=[ClassificationAccuracy(), ],
+    trainer.fit(test_dataloader=test_dataloader,
+                metric_func_ls=[ClassificationAccuracyByClasses(label_names=dataset_setting.label_names), ],
                 learning_tables=learning_tables)
     # Save weight.
     if not Path(save_weight_dir).exists():

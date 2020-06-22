@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from deepext import Trainer, EfficientDetector, M2Det, ModelCheckout
 from deepext.utils.dataset.detection import ObjectDetectionCollator, VOCAnnotationTransform
 from deepext.utils import *
-from deepext.layers import DetectionIoUByClasses
+from deepext.metrics import DetectionIoUByClasses
 
 from util import DataSetSetting
 

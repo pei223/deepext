@@ -1,16 +1,14 @@
 import argparse
-from typing import Tuple
-from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop, RandomHorizontalFlip, RandomErasing, \
+from torchvision.transforms import Resize, RandomResizedCrop, RandomHorizontalFlip, RandomErasing, \
     ColorJitter, RandomRotation
 import torchvision
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
-from deepext import Trainer, BaseModel, LearningRateScheduler, LabelAndDataTransforms, PSPNet, UNet, ResUNet, ResPSPNet, \
-    ModelCheckout, CustomShelfNet, ShelfNetRealtime, LearningCurveVisualizer
-from deepext.utils.tensor_util import try_cuda
-from deepext.layers import SegmentationAccuracyByClasses, SegmentationIoUByClasses, SegmentationAccuracy, MetricKey
+from deepext import Trainer, PSPNet, UNet, ResUNet, ResPSPNet, \
+    CustomShelfNet, ShelfNetRealtime, LearningCurveVisualizer
+from deepext.metrics import SegmentationAccuracyByClasses, SegmentationIoUByClasses, MetricKey
 from deepext.utils import *
-from deepext.transforms import ImageToOneHot, PilToTensor, SegmentationLabelSmoothing
+from deepext.transforms import ImageToOneHot, PilToTensor
 from util import DataSetSetting
 
 # TODO モデル・データセットはここを追加
