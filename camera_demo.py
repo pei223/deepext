@@ -1,7 +1,8 @@
 import argparse
-from deepext import BaseModel, PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, EfficientDetector, SegmentationModel, \
-    DetectionModel, RealtimeDetection, RealtimeSegmentation
-from deepext.utils.tensor_util import try_cuda
+from deepext.base import SegmentationModel, DetectionModel
+from deepext.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet
+from deepext.object_detection import EfficientDetector
+from deepext.camera import RealtimeDetection, RealtimeSegmentation
 from deepext.utils import *
 
 # TODO モデル・データセットはここを追加

@@ -1,12 +1,12 @@
 import argparse
-from typing import Tuple
-from torchvision.transforms import ToTensor, Resize, Compose, RandomResizedCrop
+from torchvision.transforms import Resize, Compose, RandomResizedCrop
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
-from deepext import AttentionBranchNetwork, Trainer, EfficientNet, MobileNetV3, BaseModel, LearningRateScheduler, \
-    ModelCheckout
-from deepext.utils.tensor_util import try_cuda
+from deepext.base import BaseModel
+from deepext.classifier import AttentionBranchNetwork, EfficientNet, MobileNetV3
+from deepext.trainer import Trainer
+from deepext.trainer.callbacks import GenerateAttentionMapCallback, LearningRateScheduler, ModelCheckout
 from deepext.metrics import ClassificationAccuracyByClasses
 from deepext.utils import *
 
