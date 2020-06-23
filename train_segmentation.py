@@ -53,7 +53,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
         (RandomRotation((-10, 10)), RandomRotation((-10, 10))),
         (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
         (ToTensor(), PilToTensor()),
-        (RandomErasing(), RandomErasing()),
+        # (RandomErasing(), RandomErasing()),
         (None, ImageToOneHot(setting.n_classes)),
     ])
     test_transforms = LabelAndDataTransforms([

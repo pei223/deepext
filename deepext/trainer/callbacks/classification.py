@@ -4,6 +4,7 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from torch.utils.data import Dataset
 from torchvision.transforms import ToPILImage
+from ...classifier import AttentionBranchNetwork
 
 
 class GenerateAttentionMapCallback:

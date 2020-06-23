@@ -13,17 +13,18 @@ class ImageToOneHot:
 
     def __call__(self, img: torch.Tensor):
         assert img.ndim == 3
-        img = img.permute(1, 2, 0).type(torch.LongTensor)
+        img = img.permute(1, 2, 0).long()
         img = torch.eye(self._class_num)[img]
         return img.view(img.shape[0], img.shape[1], img.shape[3]).permute(2, 0, 1)
 
 
 class PilToTensor:
-    to_tensor = ToTensor()
-
     def __call__(self, img: Image.Image):
-        # NOTE ToTensorでtensor型になるが正規化されてしまうため*255する
-        return (self.to_tensor(img) * 255 % 256).long()
+        img_array = np.array(img)
+        if img_array.ndim == 2:
+            img_array = img_array[:, :, None]
+        img_array = img_array.transpose((2, 0, 1))
+        return torch.from_numpy(img_array) % 255
 
 
 class SegmentationLabelSmoothing:

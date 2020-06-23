@@ -3,6 +3,8 @@ from typing import List
 import numpy
 from torch.utils.data import Dataset
 from torchvision.transforms import ToPILImage
+from ...base import SegmentationModel
+from ...utils import *
 
 
 class GenerateSegmentationImageCallback:

@@ -1,10 +1,8 @@
 from typing import Tuple, List
 
-import cv2
-from ..base import DetectionModel
 import numpy as np
 from .realtime_prediction import RealtimePrediction
-from ..base import BaseModel, DetectionModel
+from ..base import DetectionModel
 
 
 class RealtimeDetection(RealtimePrediction):

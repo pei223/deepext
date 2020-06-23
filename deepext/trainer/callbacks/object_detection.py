@@ -1,9 +1,11 @@
 from typing import Tuple, List
 
 import cv2
-import numpy
+import numpy as np
 import torch
 from torch.utils.data import Dataset
+from ...base import DetectionModel
+from ...utils import *
 
 
 class VisualizeRandomObjectDetectionResult:

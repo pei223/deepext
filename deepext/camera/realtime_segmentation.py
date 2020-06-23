@@ -1,11 +1,9 @@
 from typing import Tuple
 
-import cv2
 import numpy as np
 from ..base import SegmentationModel
 from .realtime_prediction import RealtimePrediction
-from ..utils import cv2image_to_tensor, default_color_palette, transparent_only_black, blend_result_and_source, \
-    pil_to_cv, cv_to_pil
+from ..utils import default_color_palette, pil_to_cv
 
 
 class RealtimeSegmentation(RealtimePrediction):
