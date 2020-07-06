@@ -5,7 +5,7 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.base import SegmentationModel
-from deepext.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime
+from deepext.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, ShallowShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import ImageToOneHot, PilToTensor, LabelAndDataTransforms
@@ -19,7 +19,8 @@ MODEL_PSPNET = "pspnet"
 MODEL_UNET = "unet"
 MODEL_SHELFNET_REALTIME = "shelfnet_realtime"
 MODEL_CUSTOM_SHELFNET = "custom_shelfnet"
-MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_CUSTOM_SHELFNET, MODEL_SHELFNET_REALTIME]
+MODEL_SHALLOW_SHELFNET = "shallow_shelfnet"
+MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_CUSTOM_SHELFNET, MODEL_SHELFNET_REALTIME, MODEL_SHALLOW_SHELFNET]
 SUBMODEL_RESNET = "resnet"
 SUBMODEL_TYPES = [SUBMODEL_RESNET]
 DATASET_VOC2012 = "voc2012"
@@ -48,10 +49,10 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = LabelAndDataTransforms([
         (RandomHorizontalFlip(), RandomHorizontalFlip()),
-        (RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0)),
-         RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0))),
         (RandomRotation((-10, 10)), RandomRotation((-10, 10))),
         (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
+        (RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0)),
+         RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0))),
         (ToTensor(), PilToTensor()),
         # (RandomErasing(), RandomErasing()),
         (None, ImageToOneHot(setting.n_classes)),
@@ -102,6 +103,9 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submo
     elif MODEL_SHELFNET_REALTIME == model_type:
         return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
                                 lr=lr)
+    elif MODEL_SHALLOW_SHELFNET == model_type:
+        return ShallowShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size,
+                               loss_type="ce", backbone=submodel_type)
     assert f"Invalid model type. Valid models is {MODEL_TYPES}"
 
 

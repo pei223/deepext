@@ -1,14 +1,14 @@
 import argparse
 from torchvision.transforms import Resize, Compose
 import torchvision
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from deepext.base import BaseModel
 from deepext.object_detection import EfficientDetector, M2Det
 from deepext.trainer import Trainer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.metrics import DetectionIoUByClasses
-from deepext.data.dataset import VOCAnnotationTransform, ObjectDetectionCollator
+from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 
 from util import DataSetSetting
@@ -59,9 +59,9 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
                                                              [VOCAnnotationTransform(class_index_dict, setting.size)]))
     assert train_dataset is not None and test_dataset is not None, f"Not supported setting: {setting.dataset_type}"
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                      collate_fn=ObjectDetectionCollator()), \
+                      collate_fn=AdjustDetectionTensorCollator()), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
-                      collate_fn=ObjectDetectionCollator()), train_dataset, test_dataset
+                      collate_fn=AdjustDetectionTensorCollator()), train_dataset, test_dataset
 
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, efficientdet_scale: int = 0):

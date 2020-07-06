@@ -15,18 +15,19 @@ class CSVAnnotationDataset(Dataset):
         with open(annotation_filepath, "r") as file:
             reader = csv.reader(file)
             for row in reader:
-                if not row[1].isdigit():
+                filename = row[0]
+                label = row[1]
+                if not label.isdigit():
                     warn(f"invalid label: {row}")
                     continue
-                self._filepath_label_dict[row[0]] = int(row[1])
-        self._filepath_ls = list(self._filepath_label_dict.keys())
+                self._filepath_label_dict[filename] = int(label)
 
     def __len__(self):
         return len(self._filepath_label_dict)
 
     def __getitem__(self, idx):
-        filepath, label = list(self._filepath_label_dict.items())[idx]
-        filepath = Path(self._image_dir).joinpath(filepath)
+        filename, label = list(self._filepath_label_dict.items())[idx]
+        filepath = Path(self._image_dir).joinpath(filename)
         img = Image.open(str(filepath))
         img = img.convert("RGB")
         if self._image_transform:

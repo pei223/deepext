@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import seaborn as sns
 from PIL import Image
 from matplotlib import pyplot as plt

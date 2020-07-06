@@ -1,5 +1,6 @@
 import argparse
-from torchvision.transforms import Resize, Compose, RandomResizedCrop
+from torchvision.transforms import Resize, Compose, RandomResizedCrop, RandomHorizontalFlip, ColorJitter, \
+    RandomRotation, RandomErasing
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
@@ -31,7 +32,12 @@ settings = [DataSetSetting(dataset_type=DATASET_STL, size=(96, 96), n_classes=10
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = Compose(
-        [Resize(setting.size), RandomResizedCrop(size=setting.size, scale=(0.3, 0.3)), ToTensor()])
+        [RandomHorizontalFlip(),
+         ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+         RandomResizedCrop(size=setting.size, scale=(0.5, 2.0)),
+         RandomRotation((-10, 10)),
+         ToTensor(),
+         RandomErasing(), ])
     test_transforms = Compose([Resize(setting.size), ToTensor()])
     train_dataset, test_dataset = None, None
     # TODO データセットはここを追加

@@ -2,7 +2,6 @@ import random
 from typing import List, Tuple
 
 import torch
-from torchvision.transforms import ToTensor
 import numpy as np
 from PIL import Image
 
