@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from deepext.base.base_model import BaseModel
-from deepext.utils.tensor_util import try_cuda
+from ...base.base_model import BaseModel
+from ...utils.tensor_util import try_cuda
 from .efficientnet_lib.model import EfficientNetPredictor
 
 

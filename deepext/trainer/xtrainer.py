@@ -4,11 +4,11 @@ from torch.utils.data import DataLoader
 from statistics import mean
 import time
 
-from deepext.assemble.assemble_model import AssembleModel
-from deepext.base import BaseModel
+from ..assemble.assemble_model import AssembleModel
+from ..base import BaseModel
 from ..base import Metrics
-from deepext.assemble.learning_table import LearningTable
-from deepext.utils.tensor_util import try_cuda
+from ..assemble.learning_table import LearningTable
+from ..utils.tensor_util import try_cuda
 from .learning_curve_visualizer import LearningCurveVisualizer
 
 

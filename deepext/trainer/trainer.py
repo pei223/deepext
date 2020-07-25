@@ -1,14 +1,15 @@
-from torch.utils.data import DataLoader
 from typing import List, Callable
+
+from torch.utils.data import DataLoader
+import torch
 from statistics import mean
 import numpy as np
 import time
 
-from deepext.base import BaseModel
-from deepext.utils.tensor_util import try_cuda
+from ..base import BaseModel
+from ..utils.tensor_util import try_cuda
 from ..base import Metrics
 from .learning_curve_visualizer import LearningCurveVisualizer
-import torch
 
 
 class Trainer:

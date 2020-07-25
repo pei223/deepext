@@ -5,9 +5,9 @@ import torch.nn.functional as F
 import torchvision.models as models
 import numpy as np
 
-from deepext.base.base_model import BaseModel
+from ...base.base_model import BaseModel
 from .mobilenetv3_lib.model import mobilenetv3
-from deepext.utils.tensor_util import try_cuda
+from ...utils.tensor_util import try_cuda
 
 
 class MobileNetV3(BaseModel):

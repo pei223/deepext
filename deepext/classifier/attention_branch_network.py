@@ -1,5 +1,5 @@
 from typing import Tuple
-from deepext.base import BaseModel
+from ..base import BaseModel
 from ..layers import *
 from ..utils import *
 

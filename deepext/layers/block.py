@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torch.nn import functional as F
 import torch
-from deepext.layers.basic import Conv2DTrasnposeBatchNorm, Conv2DBatchNormRelu, BottleNeck, BottleNeckIdentity, \
+from ..layers.basic import Conv2DTrasnposeBatchNorm, Conv2DBatchNormRelu, BottleNeck, BottleNeckIdentity, \
     DropBlock2d, Conv2DBatchNorm
 
 

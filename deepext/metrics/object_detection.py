@@ -4,8 +4,7 @@ from typing import List
 import numpy as np
 import torch
 
-from deepext.base import Metrics
-
+from ..base import Metrics
 from .keys import MetricKey
 
 
