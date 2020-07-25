@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import torch
 import numpy as np
+import torch.nn as nn
 
 
 class BaseModel(metaclass=ABCMeta):
@@ -33,3 +34,14 @@ class BaseModel(metaclass=ABCMeta):
     @abstractmethod
     def load_weight(self, weight_path: str):
         pass
+
+    # TODO state_dict以外の保存方法など考える
+    # @abstractmethod
+    # def get_model(self) -> nn.Module:
+    #     pass
+    #
+    # def save_model(self, filepath: str):
+    #     torch.save(self.get_model(), filepath)
+    #
+    # def load_model(self, filepath: str) -> nn.Module:
+    #     return torch.load(filepath)

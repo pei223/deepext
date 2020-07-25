@@ -13,15 +13,14 @@ from ...layers import Conv2DBatchNorm
 
 
 class CustomShelfNet(SegmentationModel):
-    def __init__(self, n_classes: int, out_size: Tuple[int, int], in_channels=3, lr=1e-3, loss_type="ce",
+    def __init__(self, n_classes: int, out_size: Tuple[int, int], in_channels=3, lr=1e-3, loss_func: nn.Module = None,
                  backbone="resnet18"):
         super().__init__()
         self._n_classes = n_classes
         self._model: nn.Module = try_cuda(ShelfNetModel(n_classes=n_classes, out_size=out_size, in_channels=in_channels,
                                                         backbone=backbone))
         self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
-        # self._loss_func = FocalLoss()
-        self._loss_func = SegmentationTypedLoss(loss_type=loss_type)
+        self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
         self._model.train()
@@ -32,7 +31,6 @@ class CustomShelfNet(SegmentationModel):
         loss_b = self._loss_func(pred_b, teacher)
         loss_c = self._loss_func(pred_c, teacher)
         loss = loss_a + loss_b + loss_c
-
         loss.backward()
         self._optimizer.step()
         return loss.item()
