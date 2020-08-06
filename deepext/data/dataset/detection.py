@@ -51,22 +51,27 @@ class VOCAnnotationTransform:
         self._size = size
         self._class_index_dict = class_index_dict
 
-    def __call__(self, target: ET.Element):
+    def __call__(self, target: ET.Element or Dict):
+        assert isinstance(target, ET.Element) or isinstance(target, dict)
+        is_target_dict = isinstance(target, dict)
         result = []
-        width, height = int(target.find("size/width").text), int(target.find("size/height").text)
+        if isinstance(target, Dict):
+            width, height = int(target["annotation"]["size"]["width"]), int(target["annotation"]["size"]["height"])
+        else:
+            width, height = int(target.find("size/width").text), int(target.find("size/height").text)
         points = ["xmin", "ymin", "xmax", "ymax"]
-        obj_list = target.findall("object")
+        obj_list = target["annotation"]["object"] if is_target_dict else target.findall("object")
         adjust_width_rate = self._size[1] / width if self._size is not None else 1.
         adjust_height_rate = self._size[0] / height if self._size is not None else 1.
 
         if not isinstance(obj_list, list):
             obj_list = [obj_list, ]
         for obj in obj_list:
-            class_name = obj.find("name").text
-            bbox_obj = obj.find("bndbox")
+            class_name = obj["name"] if is_target_dict else obj.find("name").text
+            bbox_obj = obj["bndbox"] if is_target_dict else obj.find("bndbox")
             bbox = []
             for i, point in enumerate(points):
-                coordinate = int(bbox_obj.find(point).text) - 1
+                coordinate = int(bbox_obj[point] if is_target_dict else bbox_obj.find(point).text) - 1
                 coordinate = coordinate * adjust_width_rate if i % 2 == 0 else coordinate * adjust_height_rate
                 bbox.append(coordinate)
             class_index = self._class_index_dict[class_name]

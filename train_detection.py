@@ -5,9 +5,9 @@ from torch.utils.data import DataLoader, Dataset
 
 from deepext.base import BaseModel
 from deepext.object_detection import EfficientDetector, M2Det
-from deepext.trainer import Trainer
+from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
-from deepext.metrics import DetectionIoUByClasses
+from deepext.metrics import DetectionIoUByClasses, MetricKey
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 
@@ -115,6 +115,12 @@ if __name__ == "__main__":
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch),
+                learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
+                                                                  ignore_epoch=10,
+                                                                  metric_for_graph=DetectionIoUByClasses(
+                                                                      dataset_setting.label_names,
+                                                                      val_key=MetricKey.KEY_AVERAGE,
+                                                                  ), save_filepath="learning_curve.png"),
                 metric_ls=[DetectionIoUByClasses(dataset_setting.label_names)])  # TODO 物体検出指標
     # Save weight.
     model.save_weight(save_weight_path)

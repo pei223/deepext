@@ -15,13 +15,14 @@ class RealtimePrediction:
     def stop(self):
         self.is_running = False
 
-    def realtime_predict(self, device_id=0, fps=10):
-        capture = cv2.VideoCapture(device_id, cv2.CAP_DSHOW)
+    def realtime_predict(self, frame_size=(1080, 720), fps=5, device_id=0, video_output_path: str = None):
+        capture = cv2.VideoCapture(device_id)
         capture.set(cv2.CAP_PROP_FPS, fps)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, frame_size[0])
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_size[1])
 
-        # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-        # frame_size = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        # video_writer = cv2.VideoWriter('output.mp4', fourcc, fps, frame_size)  # 動画書込準備
+        fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+        video_writer = cv2.VideoWriter(video_output_path, fourcc, fps, frame_size) if video_output_path else None
 
         self.is_running = True
         while capture.isOpened() and self.is_running:
@@ -30,16 +31,23 @@ class RealtimePrediction:
                 print("Failed to read frame.")
                 break
             result_img = self.calc_result(frame)
-            # video_writer.write(result_img)
+            result_img = self._arrange_image_for_video_writing(result_img, frame_size)
+            if video_writer:
+                video_writer.write(result_img)
             cv2.imshow('frame', result_img)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 print("Keyboard q pushed.")
                 break
+        if video_writer:
+            video_writer.release()
         capture.release()
-        # video_writer.release()
         cv2.destroyAllWindows()
 
     @abstractmethod
     def calc_result(self, frame: np.ndarray) -> np.ndarray:
         pass
+
+    def _arrange_image_for_video_writing(self, img, img_size):
+        img = cv2.resize(img, img_size)
+        return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR) if img.shape[-1] == 4 else img

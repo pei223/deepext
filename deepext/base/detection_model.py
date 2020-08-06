@@ -31,8 +31,6 @@ class DetectionModel(BaseModel):
             result = None
         result = self._scale_bboxes(result, img_size_for_model, origin_img_size)
         img = img_to_cv2(img)
-        print(img)
-        print(img.shape, img.dtype)
         return self._draw_result_bboxes(img, bboxes_by_class=result, label_names=label_names, pred_color=pred_color)
 
     def _scale_bboxes(self, bboxes_by_class: List[List[List[float]]], origin_size: Tuple[int, int],
