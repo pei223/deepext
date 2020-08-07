@@ -20,7 +20,7 @@ class XTrainer:
             test_dataloader: DataLoader = None, calc_metrics_per_epoch: int = 5,
             lr_graph_filepath: str = None, metric_for_graph: Metrics = None):
         assert len(learning_tables) == len(self._assemble_model.model_list)
-        # TODO LRCurveとかMetricsをTrainerに合わせる
+        # TODO LRCurveとかMetricsをTrainerに合わせる　色々追いついてない
         metric_func_ls = metric_func_ls or []
         lr_curve_visualizer = LearningCurveVisualizer(
             metric_name=metric_for_graph.__class__.__name__ if metric_for_graph else "")

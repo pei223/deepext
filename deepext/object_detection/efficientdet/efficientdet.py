@@ -53,11 +53,13 @@ class EfficientDetector(DetectionModel):
     def predict(self, inputs) -> np.ndarray:
         """
         :param inputs: (batch size, channels, height, width)
-        :return: (Batch size, classes, bounding boxes by class(variable length))
+        :return: (Batch size, bounding boxes by batch, 5(x_min, y_min, x_max, y_max, label))
         """
         self._model.eval()
         self._model.is_training = False
         batch_size = inputs.shape[0]
+
+        result = []
         all_detections = [[None for i in range(self._num_classes)] for j in range(batch_size)]
 
         with torch.no_grad():
@@ -84,7 +86,24 @@ class EfficientDetector(DetectionModel):
                     # copy detections to all_detections
                     for label in range(self._num_classes):
                         all_detections[i][label] = image_detections[image_detections[:, -1] == label, :-1]
-        return np.asarray(all_detections)
+                result.append(self._arrange_result(all_detections[i]))
+        return np.asarray(result)
+
+    def _arrange_result(self, bboxes_by_classes):
+        """
+        クラスごとのbboxをまとめる
+        :param bboxes_by_classes:
+        :return: bboxリスト(x_min, y_min, x_max, y_max, label)
+        """
+        result_bboxes = []
+        for label, bboxes in enumerate(bboxes_by_classes):
+            if bboxes is None:
+                continue
+            for bbox in bboxes:
+                if isinstance(bbox, np.ndarray):
+                    bbox = bbox.tolist()
+                result_bboxes.append(bbox + [label, ])
+        return result_bboxes
 
     def save_weight(self, save_path):
         dict_to_save = {
@@ -96,14 +115,18 @@ class EfficientDetector(DetectionModel):
 
     def load_weight(self, weight_path):
         checkpoint = torch.load(weight_path)
-        params = checkpoint['parser']
-        print('The pretrained weight is loaded')
-        print('Num classes: {}'.format(params.num_class))
-        print('Network: {}'.format(params.network))
+        # params = checkpoint['parser']
+        # print('The pretrained weight is loaded')
+        # print('Num classes: {}'.format(params.num_class))
+        # print('Network: {}'.format(params.network))
         self._model.load_state_dict(checkpoint['state_dict'])
 
     def get_model_config(self):
-        return {}
+        return {
+            "model": "EfficientDet",
+            "scale_type": self._network,
+            "classes": self._num_classes
+        }
 
     def get_optimizer(self):
         return self._optimizer

@@ -31,34 +31,28 @@ class DetectionModel(BaseModel):
             result = None
         result = self._scale_bboxes(result, img_size_for_model, origin_img_size)
         img = img_to_cv2(img)
-        return self._draw_result_bboxes(img, bboxes_by_class=result, label_names=label_names, pred_color=pred_color)
+        return self._draw_result_bboxes(img, bboxes=result, label_names=label_names, pred_color=pred_color)
 
-    def _scale_bboxes(self, bboxes_by_class: List[List[List[float]]], origin_size: Tuple[int, int],
+    def _scale_bboxes(self, bboxes: List[List[float]], origin_size: Tuple[int, int],
                       to_size: Tuple[int, int]):
         height_rate = to_size[0] / origin_size[0]
         width_rate = to_size[1] / origin_size[1]
-        if bboxes_by_class is None:
-            return bboxes_by_class
-        for cls in range(len(bboxes_by_class)):
-            print(bboxes_by_class[cls])
-            if bboxes_by_class[cls] is None or len(bboxes_by_class[cls]) == 0:
+        if bboxes is None:
+            return bboxes
+        for i in range(len(bboxes)):
+            if bboxes[i] is None or len(bboxes[i]) == 0:
                 continue
-            for i in range(len(bboxes_by_class[cls])):
-                bboxes_by_class[cls][i][0], bboxes_by_class[cls][i][2] = bboxes_by_class[cls][i][0] * width_rate, \
-                                                                         bboxes_by_class[cls][i][
-                                                                             2] * width_rate
-                bboxes_by_class[cls][i][1], bboxes_by_class[cls][i][3] = bboxes_by_class[cls][i][1] * height_rate, \
-                                                                         bboxes_by_class[cls][i][
-                                                                             3] * height_rate
-        return bboxes_by_class
+            bboxes[i][0], bboxes[i][2] = bboxes[i][0] * width_rate, bboxes[i][2] * width_rate
+            bboxes[i][1], bboxes[i][3] = bboxes[i][1] * height_rate, bboxes[i][3] * height_rate
+        return bboxes
 
-    def _draw_result_bboxes(self, image: np.ndarray, bboxes_by_class: List[List[float]], label_names: List[str],
+    def _draw_result_bboxes(self, image: np.ndarray, bboxes: List[List[float or int]], label_names: List[str],
                             pred_color=(0, 0, 255)):
-        if bboxes_by_class is None:
+        if bboxes is None:
             return image
-        for i, bboxes in enumerate(bboxes_by_class):
-            if bboxes is None or len(bboxes) == 0:
+        for bbox in bboxes:
+            if bbox is None or len(bbox) == 0:
                 continue
             image = draw_bounding_boxes_with_name_tag(image, bboxes, color=pred_color,
-                                                      text=label_names[i])
+                                                      text=label_names[int(bbox[-1])])
         return image

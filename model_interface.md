@@ -40,9 +40,12 @@
     - scores, classes, coordinates
     
 ### Predict
-- Numpy array (batch size, class, bounding box count by class(variable length), 4)
-    - bounding box contains (x_min, y_min, x_max, y_max)
+- Numpy array (batch size, class, bounding box count by batch(variable length), 5)
+    - bounding box contains (x_min, y_min, x_max, y_max, label)
 
 
 <br/><br/>
+
+
+
 

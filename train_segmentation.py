@@ -15,7 +15,7 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
-# TODO モデル・データセットはここを追加
+# NOTE モデル・データセットはここを追加
 MODEL_PSPNET = "pspnet"
 MODEL_UNET = "unet"
 MODEL_SHELFNET_REALTIME = "shelfnet_realtime"
@@ -67,7 +67,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     class_index_dict = {}
     for i, label_name in enumerate(setting.label_names):
         class_index_dict[label_name] = i
-    # TODO データセットはここを追加
+    # NOTE データセットはここを追加
     if DATASET_VOC2012 == setting.dataset_type:
         train_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year='2012',
                                                              image_set='train', transforms=train_transforms)
@@ -89,7 +89,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submodel_type: str = None):
-    # TODO モデルはここを追加
+    # NOTE モデルはここを追加
     if MODEL_PSPNET == model_type:
         if submodel_type == "resnet":
             return ResPSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=lr)

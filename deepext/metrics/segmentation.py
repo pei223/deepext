@@ -118,3 +118,5 @@ class SegmentationIoUByClasses(Metrics):
     def clear(self):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
+
+# TODO Recall/Precision/F Score

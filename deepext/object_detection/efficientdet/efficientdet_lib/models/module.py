@@ -319,7 +319,6 @@ class ConvWS2d(nn.Conv2d):
 conv_cfg = {
     'Conv': nn.Conv2d,
     'ConvWS': ConvWS2d,
-    # TODO: octave conv
 }
 
 
@@ -493,7 +492,6 @@ class ConvModule(nn.Module):
 
         # build activation layer
         if self.with_activatation:
-            # TODO: introduce `act_cfg` and supports more activation layers
             if self.activation not in ['relu']:
                 raise ValueError('{} is currently not supported.'.format(
                     self.activation))

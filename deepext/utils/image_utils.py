@@ -133,7 +133,13 @@ def img_to_pil(img: Image.Image or torch.Tensor or np.ndarray):
 
 def img_to_cv2(img: Image.Image or torch.Tensor or np.ndarray):
     if isinstance(img, torch.Tensor):
-        return (img.permute(1, 2, 0).detach().numpy() * 255).astype('uint8')
+        img = (img.permute(1, 2, 0).detach().numpy() * 255).astype('uint8')
+        if img.ndim == 2:
+            return img
+        elif img.shape[-1] == 3:
+            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        elif img.shape[-1] == 4:
+            return cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
     if isinstance(img, Image.Image):
         return pil_to_cv(img)
     return img

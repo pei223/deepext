@@ -5,7 +5,7 @@ from deepext.object_detection import EfficientDetector
 from deepext.camera import RealtimeDetection, RealtimeSegmentation
 from deepext.utils import *
 
-# TODO モデル・データセットはここを追加
+# NOTE モデル・データセットはここを追加
 MODEL_PSPNET = "pspnet"
 MODEL_UNET = "unet"
 MODEL_SHELFNET = "custom_shelfnet"
@@ -16,7 +16,7 @@ SUBMODEL_TYPES = [SUBMODEL_RESNET]
 
 
 def get_model(n_classes, size, model_type: str, submodel_type: str = None, model_scale: int = 0):
-    # TODO モデルはここを追加
+    # NOTE モデルはここを追加
     if MODEL_PSPNET == model_type:
         if submodel_type == "resnet":
             return ResPSPNet(n_classes=n_classes, img_size=size)

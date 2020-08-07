@@ -2,8 +2,10 @@ from abc import abstractmethod
 from typing import Tuple
 
 import cv2
-from ..base import BaseModel
+import time
 import numpy as np
+
+from ..base import BaseModel
 
 
 class RealtimePrediction:
@@ -15,7 +17,7 @@ class RealtimePrediction:
     def stop(self):
         self.is_running = False
 
-    def realtime_predict(self, frame_size=(1080, 720), fps=5, device_id=0, video_output_path: str = None):
+    def realtime_predict(self, frame_size=(1080, 720), fps=5, device_id=0, video_output_path: str = None, verbose=True):
         capture = cv2.VideoCapture(device_id)
         capture.set(cv2.CAP_PROP_FPS, fps)
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, frame_size[0])
@@ -30,8 +32,12 @@ class RealtimePrediction:
             if not ret:
                 print("Failed to read frame.")
                 break
+
+            start = time.time()
             result_img = self.calc_result(frame)
             result_img = self._arrange_image_for_video_writing(result_img, frame_size)
+            if verbose:
+                print(f"Prediction time:    {time.time() - start}s")
             if video_writer:
                 video_writer.write(result_img)
             cv2.imshow('frame', result_img)

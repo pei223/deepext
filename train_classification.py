@@ -13,7 +13,7 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
-# TODO モデル・データセットはここを追加
+# NOTE モデル・データセットはここを追加
 MODEL_EFFICIENT_NET = "efficientnet"
 MODEL_ATTENTION_BRANCH_NETWORK = "attention_branch_network"
 MODEL_MOBILENET = "mobilenet"
@@ -40,7 +40,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
          RandomErasing(), ])
     test_transforms = Compose([Resize(setting.size), ToTensor()])
     train_dataset, test_dataset = None, None
-    # TODO データセットはここを追加
+    # NOTE データセットはここを追加
     if DATASET_STL == setting.dataset_type:
         train_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="train",
                                                    transform=train_transforms)
@@ -57,7 +57,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, efficientnet_scale: int = 0):
-    # TODO モデルはここを追加
+    # NOTE モデルはここを追加
     if MODEL_EFFICIENT_NET == model_type:
         return EfficientNet(num_classes=dataset_setting.n_classes, lr=lr, network=f"efficientnet-b{efficientnet_scale}")
     elif MODEL_ATTENTION_BRANCH_NETWORK == model_type:

@@ -7,13 +7,13 @@ from deepext.base import BaseModel
 from deepext.object_detection import EfficientDetector, M2Det
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
-from deepext.metrics import DetectionIoUByClasses, MetricKey
+from deepext.metrics import DetectionIoUByClasses, MetricKey, RecallAndPrecision
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 
 from util import DataSetSetting
 
-# TODO モデル・データセットはここを追加
+# NOTE モデル・データセットはここを追加
 MODEL_EFFICIENT_DET = "efficientdet"
 MODEL_M2DET = "m2det"
 MODEL_TYPES = [MODEL_EFFICIENT_DET, MODEL_M2DET]
@@ -38,7 +38,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     class_index_dict = {}
     for i, label_name in enumerate(setting.label_names):
         class_index_dict[label_name] = i
-    # TODO データセットはここを追加
+    # NOTE データセットはここを追加
     if DATASET_VOC2012 == setting.dataset_type:
         train_dataset = torchvision.datasets.VOCDetection(root=root_dir, download=True, year='2012',
                                                           transform=train_transforms, image_set='train',
@@ -65,7 +65,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
 
 def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, efficientdet_scale: int = 0):
-    # TODO モデルはここを追加
+    # NOTE モデルはここを追加
     if MODEL_EFFICIENT_DET == model_type:
         return EfficientDetector(num_classes=dataset_setting.n_classes, lr=lr,
                                  network=f"efficientdet-d{efficientdet_scale}")
@@ -115,12 +115,14 @@ if __name__ == "__main__":
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch),
+                calc_metrics_per_epoch=5,
                 learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
                                                                   ignore_epoch=10,
                                                                   metric_for_graph=DetectionIoUByClasses(
                                                                       dataset_setting.label_names,
                                                                       val_key=MetricKey.KEY_AVERAGE,
                                                                   ), save_filepath="learning_curve.png"),
-                metric_ls=[DetectionIoUByClasses(dataset_setting.label_names)])  # TODO 物体検出指標
+                metric_ls=[DetectionIoUByClasses(dataset_setting.label_names),
+                           RecallAndPrecision(dataset_setting.label_names)])
     # Save weight.
     model.save_weight(save_weight_path)

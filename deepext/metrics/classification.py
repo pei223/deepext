@@ -55,3 +55,5 @@ class ClassificationAccuracyByClasses(Metrics):
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
+
+# TODO Recall/Precision/F Score

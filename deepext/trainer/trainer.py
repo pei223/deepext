@@ -70,6 +70,7 @@ class Trainer:
 
     def calc_metrics(self, data_loader: DataLoader, metric_func_ls: List[Metrics],
                      metric_for_graph: Metrics or None) -> str:
+        start = time.time()
         for metric_func in metric_func_ls:
             metric_func.clear()
         if metric_for_graph:
@@ -77,7 +78,7 @@ class Trainer:
         for x, teacher in data_loader:
             if isinstance(teacher, torch.Tensor):
                 teacher = teacher.cpu().numpy()
-            result = self._model.predict(x)
+            result = self._model.predict(try_cuda(x))
             for metric_func in metric_func_ls:
                 metric_func.calc_one_batch(result, teacher)
             if metric_for_graph:
@@ -85,4 +86,5 @@ class Trainer:
         metrics_str = ""
         for metric_func in metric_func_ls:
             metrics_str += f"{metric_func.__class__.__name__}: {metric_func.calc_summary()}\n\n"
+        metrics_str += f"Elapsed time: {time.time() - start}s\n\n\n"
         return metrics_str
