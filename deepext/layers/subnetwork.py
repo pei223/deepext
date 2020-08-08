@@ -7,8 +7,8 @@ from torch.nn import functional as F
 import torchvision
 from ..utils import *
 
-__all__ = ['BackBoneKey', 'BACKBONE_CHANNEL_COUNT_DICT', 'FeatureDecoder', 'FeatureMapBackBone', 'VGGFeatureBackBone',
-           'ResNetMultiScaleBackBone', 'ResNetBackBone', 'ResNextMultiScaleBackBone', 'AttentionClassifierBranch',]
+__all__ = ['BackBoneKey', 'BACKBONE_CHANNEL_COUNT_DICT', 'FeatureDecoder', 'FeatureMapBackBone',
+           'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', ]
 
 
 class BackBoneKey(Enum):
@@ -89,74 +89,6 @@ class FeatureMapBackBone(nn.Module):
         return self._out_channels
 
 
-class VGGFeatureBackBone(nn.Module):
-    def __init__(self, in_channels=3, pretrained=True, n_vgg_layer=18):
-        super().__init__()
-        assert in_channels == 3, "VGGのフィルタサイズに合わせるため"
-        self._model = nn.Sequential()
-        self._n_vgg_layer = n_vgg_layer
-        vgg_feature = torchvision.models.vgg19(pretrained=pretrained).features
-        self._model.add_module(
-            "vgg_feature",
-            vgg_feature[:n_vgg_layer]
-        )
-
-    def forward(self, x):
-        return self._model(x)
-
-    def output_filter_num(self):
-        if self._n_vgg_layer < 5:
-            return 64
-        elif self._n_vgg_layer < 10:
-            return 128
-        elif self._n_vgg_layer < 19:
-            return 256
-        else:
-            return 512
-
-
-class ResNetBackBone(nn.Module):
-    def __init__(self, in_channels=3, pretrained=True, n_block: int = 3, resnet_type="resnet50"):
-        super().__init__()
-        assert in_channels == 3, "Resnetのフィルタサイズに合わせるため"
-        assert 1 <= n_block <= 4
-        assert resnet_type in ["resnet50", "resnet101"]
-        resnet_model = torchvision.models.resnet50(
-            pretrained=pretrained) if resnet_type == "resnet50" else torchvision.models.resnet101(pretrained=pretrained)
-        self._n_block = n_block
-
-        self._model = nn.Sequential(
-            resnet_model.conv1,
-            resnet_model.bn1,
-            resnet_model.relu,
-            resnet_model.maxpool,
-        )
-        self._model.add_module("resnet_block1", resnet_model.layer1)
-        if n_block < 2:
-            return
-        self._model.add_module("resnet_block2", resnet_model.layer2)
-        if n_block < 3:
-            return
-        self._model.add_module("resnet_block3", resnet_model.layer3)
-        if n_block < 4:
-            return
-        self._model.add_module("resnet_block4", resnet_model.layer4)
-
-    def forward(self, x):
-        return self._model(x)
-
-    def output_filter_num(self):
-        if self._n_block == 1:
-            return 256
-        elif self._n_block == 2:
-            return 512
-        elif self._n_block == 3:
-            return 1024
-        elif self._n_block == 4:
-            return 2048
-        assert False
-
-
 class FeatureDecoder(nn.Module):
     def __init__(self, in_channels: int, heigh: int, width: int, n_classes: int, dropout_rate: float = 0.1):
         super().__init__()
@@ -214,7 +146,7 @@ class AttentionClassifierBranch(nn.Module):
         return classification_label, attention_map
 
 
-class ResNetMultiScaleBackBone(nn.Module):
+class ResNetBackBone(nn.Module):
     def __init__(self, resnet_type: BackBoneKey = BackBoneKey.RESNET_18, pretrained=True):
         super().__init__()
         assert resnet_type in [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50,
@@ -247,7 +179,7 @@ class ResNetMultiScaleBackBone(nn.Module):
         return out1, out2, out3, out4
 
 
-class ResNextMultiScaleBackBone(nn.Module):
+class ResNextBackBone(nn.Module):
     def __init__(self, resnext_type: BackBoneKey = BackBoneKey.RESNEXT_50, pretrained=True):
         super().__init__()
         assert resnext_type in [BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]

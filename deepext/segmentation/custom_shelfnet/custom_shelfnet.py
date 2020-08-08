@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from ...base import SegmentationModel
 
-from ...layers import ResNetMultiScaleBackBone, SegmentationTypedLoss, BACKBONE_CHANNEL_COUNT_DICT, BackBoneKey
+from ...layers import ResNetBackBone, SegmentationTypedLoss, BACKBONE_CHANNEL_COUNT_DICT, BackBoneKey
 from .modules import SegmentationShelf, OutLayer
 from ...utils import try_cuda
 from ...layers import Conv2DBatchNorm
@@ -88,7 +88,7 @@ class ShelfNetModel(nn.Module):
                                             out_channels=mid_channel_ls[i], padding=0))
         self._reducers = nn.ModuleList(reducers)
 
-        self._multi_scale_backbone = ResNetMultiScaleBackBone(resnet_type=backbone)
+        self._multi_scale_backbone = ResNetBackBone(resnet_type=backbone)
         self._segmentation_shelf = SegmentationShelf(in_channels_ls=mid_channel_ls)
 
         out_convs = []

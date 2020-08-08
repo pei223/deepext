@@ -5,7 +5,7 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.base import BaseModel
-from deepext.classifier import AttentionBranchNetwork, EfficientNet, MobileNetV3
+from deepext.classifier import AttentionBranchNetwork, EfficientNet, MobileNetV3, ResNetAttentionBranchNetwork
 from deepext.trainer import Trainer
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, LearningRateScheduler, ModelCheckout
 from deepext.metrics import ClassificationAccuracyByClasses
@@ -61,7 +61,7 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, effic
     if MODEL_EFFICIENT_NET == model_type:
         return EfficientNet(num_classes=dataset_setting.n_classes, lr=lr, network=f"efficientnet-b{efficientnet_scale}")
     elif MODEL_ATTENTION_BRANCH_NETWORK == model_type:
-        return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=lr))
+        return try_cuda(ResNetAttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=lr))
     elif MODEL_MOBILENET == model_type:
         return MobileNetV3(num_classes=dataset_setting.n_classes, lr=lr, pretrained=False)
     assert f"Invalid model type. Valid models is {MODEL_TYPES}"

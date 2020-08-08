@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from ...base import SegmentationModel
 
-from ...layers import ResNetMultiScaleBackBone, SegmentationTypedLoss, FocalLoss
+from ...layers import ResNetBackBone, SegmentationTypedLoss, FocalLoss
 from .modules import SegmentationShelf, OutLayer
 from ...utils import try_cuda
 from ...layers import Conv2DBatchNorm

@@ -3,14 +3,15 @@ from ..base import BaseModel
 from ..layers import *
 from ..utils import *
 
+__all__ = ['AttentionBranchNetwork', 'ResNetAttentionBranchNetwork']
+
 
 class AttentionBranchNetwork(nn.Module, BaseModel):
-    def __init__(self, n_classes: int, in_channels: int = 3, first_layer_channels=32, n_blocks=3, lr=1e-4):
+    def __init__(self, n_classes: int, first_layer_channels=32, n_blocks=3, lr=1e-4):
         super().__init__()
-        assert in_channels == 3
         self._n_classes = n_classes
         self.feature_extractor = nn.Sequential(
-            ResidualBlock(in_channels=in_channels,
+            ResidualBlock(in_channels=3,
                           mid_channels=first_layer_channels,
                           out_channels=first_layer_channels * 2, n_blocks=2),
             ResidualBlock(in_channels=first_layer_channels * 2,
@@ -46,7 +47,7 @@ class AttentionBranchNetwork(nn.Module, BaseModel):
         :param x: (batch size, channels, height, width)
         :return: (batch size, class), (batch size, class), heatmap (batch size, 1, height, width)
         """
-        origin_feature = self.feature_extractor(x)
+        origin_feature = self.extract_feature(x)
         attention_output, attention_map = self.attention_branch(origin_feature)
         # 特徴量・Attention mapのSkip connection
         perception_feature = origin_feature * attention_map
@@ -109,29 +110,35 @@ class AttentionBranchNetwork(nn.Module, BaseModel):
     def get_optimizer(self):
         return self._optimizer
 
+    def extract_feature(self, x):
+        return self.feature_extractor(x)
+
 
 class ResNetAttentionBranchNetwork(AttentionBranchNetwork):
-    def __init__(self, n_classes: int, in_channels: int = 3, pretrained=True, resnet_type="resnet50", n_blocks=3,
-                 lr=1e-4, first_layer_channels=32):
-        super().__init__(n_classes=n_classes, in_channels=in_channels, lr=lr)
-        assert in_channels == 3
-        self.feature_extractor: ResNetBackBone = ResNetBackBone(resnet_type=resnet_type, pretrained=pretrained)
-        feature_filter_num = self.feature_extractor.output_filter_num()
-        self.attention_branch = AttentionClassifierBranch(in_channels=feature_filter_num, n_classes=n_classes,
+    def __init__(self, n_classes: int, pretrained=True,
+                 resnet_type: BackBoneKey = BackBoneKey.RESNET_50, n_blocks=3, lr=1e-4, first_layer_channels=32):
+        super().__init__(n_classes=n_classes, lr=lr)
+        self._n_blocks = n_blocks
+        self.feature_extractor: ResNetBackBone = ResNetBackBone(resnet_type=resnet_type,
+                                                                pretrained=pretrained)
+        feature_channel_num = BACKBONE_CHANNEL_COUNT_DICT[BackBoneKey.RESNET_50][self._n_blocks - 1]
+        self.attention_branch = AttentionClassifierBranch(in_channels=feature_channel_num, n_classes=n_classes,
                                                           n_blocks=n_blocks)
-
         self.perception_branch = nn.Sequential()
         for i in range(n_blocks - 1):
             if i == 0:
                 self.perception_branch.add_module(f"block{i + 1}",
-                                                  BottleNeck(in_channels=feature_filter_num,
-                                                             mid_channels=feature_filter_num,
-                                                             out_channels=feature_filter_num, stride=2))
+                                                  BottleNeck(in_channels=feature_channel_num,
+                                                             mid_channels=feature_channel_num,
+                                                             out_channels=feature_channel_num, stride=2))
                 continue
             self.perception_branch.add_module(f"block{i + 1}",
-                                              BottleNeckIdentity(in_channels=feature_filter_num,
-                                                                 out_channels=feature_filter_num))
+                                              BottleNeckIdentity(in_channels=feature_channel_num,
+                                                                 out_channels=feature_channel_num))
         self.perception_branch.add_module(f"block{n_blocks}",
-                                          nn.Conv2d(kernel_size=1, padding=0, in_channels=feature_filter_num,
+                                          nn.Conv2d(kernel_size=1, padding=0, in_channels=feature_channel_num,
                                                     out_channels=n_classes))
         self.perception_branch.add_module("gap", GlobalAveragePooling())
+
+    def extract_feature(self, x):
+        return self.feature_extractor(x)[self._n_blocks - 1]
