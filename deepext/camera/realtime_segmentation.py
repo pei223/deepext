@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import numpy as np
-from ..base import SegmentationModel
+from ..models.base import SegmentationModel
 from .realtime_prediction import RealtimePrediction
 from ..utils import default_color_palette, pil_to_cv
 

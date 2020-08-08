@@ -2,7 +2,7 @@ from typing import Tuple, List
 
 import numpy as np
 from .realtime_prediction import RealtimePrediction
-from ..base import DetectionModel
+from ..models.base import DetectionModel
 
 
 class RealtimeDetection(RealtimePrediction):

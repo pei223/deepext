@@ -1,5 +1,5 @@
 from typing import List
-from deepext.base import BaseModel
+from ..models.base import BaseModel
 import torch
 from collections import OrderedDict
 from pathlib import Path

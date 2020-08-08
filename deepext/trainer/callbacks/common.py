@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from ...base import BaseModel
+from ...models.base import BaseModel
 
 
 class LearningRateScheduler:

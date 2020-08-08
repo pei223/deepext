@@ -4,7 +4,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 
-from ..base import Metrics
+from .base_metrics import BaseMetrics
 from .keys import MetricKey
 
 
@@ -29,8 +29,9 @@ def calc_overlap_union_iou(pred: np.ndarray or None, teacher: np.ndarray) -> Tup
     return overlap, union, iou
 
 
-class DetectionIoUByClasses(Metrics):
+class DetectionIoUByClasses(BaseMetrics):
     def __init__(self, label_names: List[str], val_key: MetricKey = None):
+        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE]
         self.label_names = label_names
         self.union_by_classes = [0 for i in range(len(self.label_names))]
         self.overlap_by_classes = [0 for i in range(len(self.label_names))]
@@ -100,7 +101,7 @@ class DetectionIoUByClasses(Metrics):
         self.overlap_by_classes = [0 for i in range(len(self.label_names))]
 
 
-class RecallAndPrecision(Metrics):
+class RecallAndPrecision(BaseMetrics):
     def __init__(self, label_names: List[str], main_val_key: MetricKey = None, sub_val_key: MetricKey = None):
         self.label_names = label_names
         self.tp_by_classes = [0 for i in range(len(self.label_names))]

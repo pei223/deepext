@@ -1,16 +1,17 @@
 import argparse
-from torchvision.transforms import Resize, RandomResizedCrop, RandomHorizontalFlip, RandomErasing, \
-    ColorJitter, RandomRotation
+from torchvision.transforms import Resize, RandomResizedCrop, RandomHorizontalFlip, ColorJitter, RandomRotation
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
-from deepext.base import SegmentationModel
-from deepext.layers import FocalLoss, BackBoneKey
-from deepext.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, ShallowShelfNet
+from deepext.layers.loss import FocalLoss
+from deepext.layers.subnetwork import BackBoneKey
+from deepext.models.base import SegmentationModel
+from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, \
+    ShallowShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import ImageToOneHot, PilToTensor, LabelAndDataTransforms
-from deepext.metrics import SegmentationAccuracyByClasses, SegmentationIoUByClasses, MetricKey
+from deepext.metrics.segmentation import *
 from deepext.utils import *
 
 from util import DataSetSetting

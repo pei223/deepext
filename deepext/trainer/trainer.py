@@ -6,9 +6,9 @@ from statistics import mean
 import numpy as np
 import time
 
-from ..base import BaseModel
+from ..models.base import BaseModel
 from ..utils.tensor_util import try_cuda
-from ..base import Metrics
+from ..metrics.base_metrics import BaseMetrics
 from .learning_curve_visualizer import LearningCurveVisualizer
 
 
@@ -17,7 +17,7 @@ class Trainer:
         self._model: BaseModel = model
 
     def fit(self, data_loader: DataLoader, epochs: int, test_dataloader: DataLoader = None,
-            callbacks: List[Callable[[int, ], None]] = None, metric_ls: List[Metrics] = None,
+            callbacks: List[Callable[[int, ], None]] = None, metric_ls: List[BaseMetrics] = None,
             lr_scheduler_func: Callable[[int, ], float] = None, calc_metrics_per_epoch: int = 5,
             learning_curve_visualizer: LearningCurveVisualizer = None):
         """
@@ -68,8 +68,8 @@ class Trainer:
             loss_list.append(loss)
         return mean(loss_list)
 
-    def calc_metrics(self, data_loader: DataLoader, metric_func_ls: List[Metrics],
-                     metric_for_graph: Metrics or None) -> str:
+    def calc_metrics(self, data_loader: DataLoader, metric_func_ls: List[BaseMetrics],
+                     metric_for_graph: BaseMetrics or None) -> str:
         start = time.time()
         for metric_func in metric_func_ls:
             metric_func.clear()

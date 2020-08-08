@@ -1,9 +1,9 @@
 from matplotlib import pyplot as plt
-from ..base import Metrics
+from ..metrics.base_metrics import BaseMetrics
 
 
 class LearningCurveVisualizer:
-    def __init__(self, metric_name: str, metric_for_graph: Metrics, save_filepath: str,
+    def __init__(self, metric_name: str, metric_for_graph: BaseMetrics, save_filepath: str,
                  ignore_epoch=0):
         """
         :param metric_name:

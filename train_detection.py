@@ -3,11 +3,12 @@ from torchvision.transforms import Resize, Compose
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
-from deepext.base import BaseModel
-from deepext.object_detection import EfficientDetector, M2Det
+from deepext.models.base import BaseModel
+from deepext.models.object_detection import EfficientDetector, M2Det
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
-from deepext.metrics import DetectionIoUByClasses, MetricKey, RecallAndPrecision
+from deepext.metrics.object_detection import *
+from deepext.metrics import MetricKey
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 

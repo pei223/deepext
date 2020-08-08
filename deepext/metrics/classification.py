@@ -5,12 +5,13 @@ import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
 
-from ..base import Metrics
+from .base_metrics import BaseMetrics
 from .keys import MetricKey
 
 
-class ClassificationAccuracyByClasses(Metrics):
+class ClassificationAccuracyByClasses(BaseMetrics):
     def __init__(self, label_names: List[str], val_key: MetricKey = None):
+        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE]
         self.label_names = label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]

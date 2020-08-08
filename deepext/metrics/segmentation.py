@@ -4,12 +4,14 @@ from typing import List
 import numpy as np
 import torch
 
-from ..base import Metrics
+from .base_metrics import BaseMetrics
 from .keys import MetricKey
 
 
-class SegmentationAccuracyByClasses(Metrics):
+class SegmentationAccuracyByClasses(BaseMetrics):
     def __init__(self, label_names: List[str], val_key: MetricKey = None):
+        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE,
+                                              MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND]
         self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
@@ -64,8 +66,10 @@ class SegmentationAccuracyByClasses(Metrics):
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
 
-class SegmentationIoUByClasses(Metrics):
+class SegmentationIoUByClasses(BaseMetrics):
     def __init__(self, label_names: List[str], val_key: MetricKey = None):
+        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE,
+                                              MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND]
         self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]

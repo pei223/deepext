@@ -1,7 +1,7 @@
 import argparse
-from deepext.base import SegmentationModel, DetectionModel
-from deepext.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet
-from deepext.object_detection import EfficientDetector
+from deepext.models.base import SegmentationModel, DetectionModel
+from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet
+from deepext.models.object_detection import EfficientDetector
 from deepext.camera import RealtimeDetection, RealtimeSegmentation
 from deepext.utils import *
 

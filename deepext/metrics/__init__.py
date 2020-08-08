@@ -1,4 +1,2 @@
-from .classification import ClassificationAccuracyByClasses
-from .segmentation import SegmentationIoUByClasses, SegmentationAccuracyByClasses
-from .object_detection import DetectionIoUByClasses, RecallAndPrecision
+from . import classification, segmentation, object_detection
 from .keys import MetricKey

@@ -4,11 +4,12 @@ from torchvision.transforms import Resize, Compose, RandomResizedCrop, RandomHor
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
-from deepext.base import BaseModel
-from deepext.classifier import AttentionBranchNetwork, EfficientNet, MobileNetV3, ResNetAttentionBranchNetwork
-from deepext.trainer import Trainer
+from deepext.models.base import BaseModel
+from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, ResNetAttentionBranchNetwork
+from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, LearningRateScheduler, ModelCheckout
-from deepext.metrics import ClassificationAccuracyByClasses
+from deepext.metrics.classification import *
+from deepext.metrics import MetricKey
 from deepext.utils import *
 
 from util import DataSetSetting
@@ -106,7 +107,14 @@ if __name__ == "__main__":
     trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                 epochs=args.epoch, callbacks=callbacks,
                 lr_scheduler_func=LearningRateScheduler(args.epoch),
-                metric_ls=[ClassificationAccuracyByClasses(dataset_setting.label_names), ])
+                metric_ls=[ClassificationAccuracyByClasses(dataset_setting.label_names), ],
+                calc_metrics_per_epoch=5,
+                learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
+                                                                  ignore_epoch=0,
+                                                                  metric_for_graph=ClassificationAccuracyByClasses(
+                                                                      dataset_setting.label_names,
+                                                                      val_key=MetricKey.KEY_TOTAL),
+                                                                  save_filepath="learning_curve.png"))
 
     # Save weight.
     model.save_weight(save_weight_path)

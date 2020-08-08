@@ -4,8 +4,7 @@ from typing import Tuple
 import cv2
 import time
 import numpy as np
-
-from ..base import BaseModel
+from ..models.base import BaseModel
 
 
 class RealtimePrediction:
