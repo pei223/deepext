@@ -5,7 +5,7 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.base import SegmentationModel
-from deepext.layers import FocalLoss
+from deepext.layers import FocalLoss, BackBoneKey
 from deepext.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, ShallowShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, GenerateSegmentationImageCallback
@@ -102,7 +102,7 @@ def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submo
         return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size,
                               loss_func=FocalLoss(
                                   weights=[0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ]),
-                              backbone=submodel_type)
+                              backbone=BackBoneKey.from_val(submodel_type))
     elif MODEL_SHELFNET_REALTIME == model_type:
         return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
                                 lr=lr)

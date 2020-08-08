@@ -7,22 +7,16 @@ from ...layers import Conv2DBatchNormRelu, SharedWeightResidualBlock, ChannelWis
 
 
 class SegmentationShelf(nn.Module):
-    def __init__(self, in_channels_ls=None):
-        if in_channels_ls is None:
-            in_channels_ls = [64, 128, 256, 512]
-        assert len(in_channels_ls) == 4
+    def __init__(self, in_channels_ls: List[int]):
         super().__init__()
         self._decoder = Decoder(in_channels_ls=in_channels_ls)
         self._encoder = Encoder(in_channels_ls=in_channels_ls)
         self._final_decoder = Decoder(in_channels_ls=in_channels_ls)
 
     def forward(self, inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]):
-        assert len(inputs) == 4
-        input_a, input_b, input_c, input_d = inputs
-
-        dec_outputs = self._decoder((input_a, input_b, input_c, input_d))
+        dec_outputs = self._decoder(inputs)
         enc_outputs = self._encoder(dec_outputs)
-        final_output = self._final_decoder(enc_outputs)
+        final_output = self._final_decoder(enc_outputs, contain_bottom=True)
         return final_output
 
 
@@ -41,91 +35,63 @@ class OutLayer(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels_ls=None):
-        if in_channels_ls is None:
-            in_channels_ls = [64, 128, 256, 512]
-        assert len(in_channels_ls) == 4
+    def __init__(self, in_channels_ls: List[int]):
         super().__init__()
 
-        self._sblock_d = SharedWeightResidualBlock(in_channels=in_channels_ls[3])
-        self._sblock_c = SharedWeightResidualBlock(in_channels=in_channels_ls[2])
-        self._sblock_b = SharedWeightResidualBlock(in_channels=in_channels_ls[1])
-        self._sblock_a = SharedWeightResidualBlock(in_channels=in_channels_ls[0])
+        sblocks = list(map(lambda in_channel: SharedWeightResidualBlock(in_channels=in_channel), in_channels_ls[::-1]))
+        self._sblocks = nn.ModuleList(sblocks)
 
-        self._attention_d2c = ChannelWiseAttentionBlock(in_channels=in_channels_ls[3], out_channels=in_channels_ls[2])
-        self._dense_d2c = Conv2DBatchNorm(in_channels=in_channels_ls[2], out_channels=in_channels_ls[2],
-                                          kernel_size=3, stride=1, padding=1)
-        self._attention_c2b = ChannelWiseAttentionBlock(in_channels=in_channels_ls[2], out_channels=in_channels_ls[1])
-        self._dense_c2b = Conv2DBatchNorm(in_channels=in_channels_ls[1], out_channels=in_channels_ls[1],
-                                          kernel_size=3, stride=1, padding=1)
-        self._attention_b2a = ChannelWiseAttentionBlock(in_channels=in_channels_ls[1], out_channels=in_channels_ls[0])
-        self._dense_b2a = Conv2DBatchNorm(in_channels=in_channels_ls[0], out_channels=in_channels_ls[0],
-                                          kernel_size=3, stride=1, padding=1)
+        attention_connections, dense_connections = [], []
+        for i in range(1, len(in_channels_ls)):
+            attention = ChannelWiseAttentionBlock(in_channels=in_channels_ls[i], out_channels=in_channels_ls[i - 1])
+            dense = Conv2DBatchNorm(in_channels=in_channels_ls[i - 1], out_channels=in_channels_ls[i - 1],
+                                    kernel_size=3, stride=1, padding=1)
+            attention_connections.append(attention)
+            dense_connections.append(dense)
 
-        # self._upconv_d2c = nn.ConvTranspose2d(in_channels=in_channels_ls[3], out_channels=in_channels_ls[2],
-        #                                       kernel_size=2, stride=2)
-        # self._upconv_c2b = nn.ConvTranspose2d(in_channels=in_channels_ls[2], out_channels=in_channels_ls[1],
-        #                                       kernel_size=2, stride=2)
-        # self._upconv_b2a = nn.ConvTranspose2d(in_channels=in_channels_ls[1], out_channels=in_channels_ls[0],
-        #                                       kernel_size=2, stride=2)
+        self._attention_connections = nn.ModuleList(attention_connections[::-1])
+        self._dense_connections = nn.ModuleList(dense_connections[::-1])
 
-    def forward(self, inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]):
-        assert len(inputs) == 4
-        input_a, input_b, input_c, input_d = inputs
-        # out = self._sblock_d(input_d, None)
-        # out = self._upconv_d2c(out)
-        # out_c = self._sblock_c(input_c, out)
-        # out = self._upconv_c2b(out_c)
-        # out_b = self._sblock_b(input_b, out)
-        # out = self._upconv_b2a(out_b)
-        # out_a = self._sblock_a(input_a, out)
-        out = self._sblock_d(input_d, None)
-        out = self._attention_d2c(out)
-        out = self._upsampling(out)
-        out = self._dense_d2c(out)
-
-        out_c = self._sblock_c(input_c, out)
-        out = self._attention_c2b(out)
-        out = self._upsampling(out)
-        out = self._dense_c2b(out)
-
-        out_b = self._sblock_b(input_b, out)
-        out = self._attention_b2a(out)
-        out = self._upsampling(out)
-        out = self._dense_b2a(out)
-
-        out_a = self._sblock_a(input_a, out)
-        return out_a, out_b, out_c
+    def forward(self, inputs: List[torch.Tensor], contain_bottom=False):
+        # inputsは高解像度から低解像度の順
+        outs = []
+        if contain_bottom:
+            outs.append(inputs[-1])
+        # 低解像度から高解像度へアップサンプリング
+        out = self._sblocks[0](inputs[-1], None)
+        for i in range(len(self._attention_connections)):
+            out = self._attention_connections[i](out)
+            out = self._upsampling(out)
+            out = self._dense_connections[i](out)
+            # SBlockは1つ多く進める
+            input_ = inputs[-(i + 2)]  # 高解像度から低解像度順のため逆のインデックスになる
+            out = self._sblocks[i + 1](input_, out)
+            outs.insert(0, out)  # 高解像度から低解像度になるよう追加
+        return outs
 
     def _upsampling(self, x):
         return F.interpolate(x, (x.size(2) * 2, x.size(3) * 2), mode="nearest")
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels_ls=None):
-        if in_channels_ls is None:
-            in_channels_ls = [64, 128, 256, 512]
-        assert len(in_channels_ls) == 4
+    def __init__(self, in_channels_ls: List[int]):
         super().__init__()
-        self._sblock_a = SharedWeightResidualBlock(in_channels=in_channels_ls[0])
-        self._sblock_b = SharedWeightResidualBlock(in_channels=in_channels_ls[1])
-        self._sblock_c = SharedWeightResidualBlock(in_channels=in_channels_ls[2])
-        self._sblock_d = SharedWeightResidualBlock(in_channels=in_channels_ls[3])
 
-        self._downconv_a2b = nn.Conv2d(kernel_size=3, stride=2, in_channels=in_channels_ls[0],
-                                       out_channels=in_channels_ls[1], padding=1)
-        self._downconv_b2c = nn.Conv2d(kernel_size=3, stride=2, in_channels=in_channels_ls[1],
-                                       out_channels=in_channels_ls[2], padding=1)
-        self._downconv_c2d = nn.Conv2d(kernel_size=3, stride=2, in_channels=in_channels_ls[2],
-                                       out_channels=in_channels_ls[3], padding=1)
+        sblocks = list(map(lambda in_channel: SharedWeightResidualBlock(in_channels=in_channel), in_channels_ls[:-1]))
+        self._sblocks = nn.ModuleList(sblocks)
 
-    def forward(self, inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
-        assert len(inputs) == 3
-        input_a, input_b, input_c = inputs
-        out_a = self._sblock_a(input_a, None)
-        out = self._downconv_a2b(out_a)
-        out_b = self._sblock_b(input_b, out)
-        out = self._downconv_b2c(out_b)
-        out_c = self._sblock_c(input_c, out)
-        out_d = self._downconv_c2d(out_c)
-        return out_a, out_b, out_c, out_d
+        down_convs = []
+        for i in range(1, len(in_channels_ls)):
+            down_convs.append(nn.Conv2d(kernel_size=3, stride=2, in_channels=in_channels_ls[i - 1],
+                                        out_channels=in_channels_ls[i], padding=1))
+        self._down_convs = nn.ModuleList(down_convs)
+
+    def forward(self, inputs: List[torch.Tensor]):
+        out = None
+        outs = []
+        for i in range(len(self._sblocks)):
+            out = self._sblocks[i](inputs[i], out)
+            outs.append(out)
+            out = self._down_convs[i](out)
+        outs.append(out)
+        return outs

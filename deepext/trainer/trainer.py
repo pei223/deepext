@@ -43,6 +43,8 @@ class Trainer:
             if learning_curve_visualizer:
                 learning_curve_visualizer.add_loss(mean_loss)
             print(f"epoch {epoch + 1} / {epochs} :  {elapsed_time}s   --- loss: {mean_loss}")
+            for callback in callbacks:
+                callback(epoch)
             # 指標算出
             if (epoch + 1) % calc_metrics_per_epoch == 0:
                 metric_for_graph = learning_curve_visualizer.metric_for_graph if learning_curve_visualizer else None
@@ -56,8 +58,6 @@ class Trainer:
                                                           # train_metric=train_metric_val_for_graph,
                                                           calc_metric_per_epoch=calc_metrics_per_epoch)
                     learning_curve_visualizer.save_graph_image()
-            for callback in callbacks:
-                callback(epoch)
 
     def train_epoch(self, data_loader: DataLoader) -> float:
         loss_list = []

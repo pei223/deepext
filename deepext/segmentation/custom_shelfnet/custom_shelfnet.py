@@ -6,19 +6,18 @@ import torch.nn as nn
 
 from ...base import SegmentationModel
 
-from ...layers import ResNetMultiScaleBackBone, SegmentationTypedLoss, FocalLoss
+from ...layers import ResNetMultiScaleBackBone, SegmentationTypedLoss, BACKBONE_CHANNEL_COUNT_DICT, BackBoneKey
 from .modules import SegmentationShelf, OutLayer
 from ...utils import try_cuda
 from ...layers import Conv2DBatchNorm
 
 
 class CustomShelfNet(SegmentationModel):
-    def __init__(self, n_classes: int, out_size: Tuple[int, int], in_channels=3, lr=1e-3, loss_func: nn.Module = None,
-                 backbone="resnet18"):
+    def __init__(self, n_classes: int, out_size: Tuple[int, int], lr=1e-3, loss_func: nn.Module = None,
+                 backbone: BackBoneKey = BackBoneKey.RESNET_18):
         super().__init__()
         self._n_classes = n_classes
-        self._model: nn.Module = try_cuda(ShelfNetModel(n_classes=n_classes, out_size=out_size, in_channels=in_channels,
-                                                        backbone=backbone))
+        self._model: nn.Module = try_cuda(ShelfNetModel(n_classes=n_classes, out_size=out_size, backbone=backbone))
         self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
         self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
 
@@ -26,7 +25,7 @@ class CustomShelfNet(SegmentationModel):
         self._model.train()
         train_x, teacher = try_cuda(train_x), try_cuda(teacher)
         self._optimizer.zero_grad()
-        pred, pred_b, pred_c = self._model(train_x)
+        pred, pred_b, pred_c = self._model(train_x)[:3]
         loss_a = self._loss_func(pred, teacher)
         loss_b = self._loss_func(pred_b, teacher)
         loss_c = self._loss_func(pred_c, teacher)
@@ -67,47 +66,48 @@ class CustomShelfNet(SegmentationModel):
 
 
 class ShelfNetModel(nn.Module):
-    def __init__(self, n_classes: int, out_size: Tuple[int, int], in_channels=3, backbone="resnet18"):
+    def __init__(self, n_classes: int, out_size: Tuple[int, int], backbone: BackBoneKey = BackBoneKey.RESNET_18):
         super().__init__()
 
-        if backbone in ["resnet18", "resnet34"]:
-            backbone_out_channel_ls = [64, 128, 256, 512]
-            mid_channel_ls = [64, 128, 256, 512]
-        elif backbone == "resnet50":
-            backbone_out_channel_ls = [256, 512, 1024, 2048]
-            mid_channel_ls = [128, 256, 512, 1024]
-        elif backbone == "resnet101":
-            backbone_out_channel_ls = [512, 1024, 2048, 4096]
-            mid_channel_ls = [256, 512, 1024, 2048]
+        backbone_out_channel_ls = BACKBONE_CHANNEL_COUNT_DICT.get(backbone)
+        assert backbone_out_channel_ls is not None, "Invalid backbone type."
+        if backbone in [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34]:
+            mid_channel_ls = [64, 128, 256]
+        elif backbone == BackBoneKey.RESNET_50:
+            mid_channel_ls = [128, 256, 512]
+        elif backbone == BackBoneKey.RESNET_101:
+            mid_channel_ls = [256, 512, 1024]
         else:
             assert False, "Invalid backbone type."
 
-        self._reducer_a = Conv2DBatchNorm(kernel_size=1, in_channels=backbone_out_channel_ls[0],
-                                          out_channels=mid_channel_ls[0], padding=0)
-        self._reducer_b = Conv2DBatchNorm(kernel_size=1, in_channels=backbone_out_channel_ls[1],
-                                          out_channels=mid_channel_ls[1], padding=0)
-        self._reducer_c = Conv2DBatchNorm(kernel_size=1, in_channels=backbone_out_channel_ls[2],
-                                          out_channels=mid_channel_ls[2], padding=0)
-        self._reducer_d = Conv2DBatchNorm(kernel_size=1, in_channels=backbone_out_channel_ls[3],
-                                          out_channels=mid_channel_ls[3], padding=0)
+        reducers = []
+        layer_diff = len(backbone_out_channel_ls) - len(mid_channel_ls)
+        assert layer_diff >= 0, "Shelfのレイヤー数はBackBoneのレイヤー数以下の必要があります."
+        for i in range(len(mid_channel_ls)):
+            reducers.append(Conv2DBatchNorm(kernel_size=1, in_channels=backbone_out_channel_ls[layer_diff + i],
+                                            out_channels=mid_channel_ls[i], padding=0))
+        self._reducers = nn.ModuleList(reducers)
 
         self._multi_scale_backbone = ResNetMultiScaleBackBone(resnet_type=backbone)
         self._segmentation_shelf = SegmentationShelf(in_channels_ls=mid_channel_ls)
-        self.conv_out = OutLayer(in_channels=mid_channel_ls[0], mid_channels=mid_channel_ls[0], n_classes=n_classes,
-                                 out_size=out_size)
-        self.conv_out_b = OutLayer(in_channels=mid_channel_ls[1], mid_channels=mid_channel_ls[0], n_classes=n_classes,
-                                   out_size=out_size)
-        self.conv_out_c = OutLayer(in_channels=mid_channel_ls[2], mid_channels=mid_channel_ls[1], n_classes=n_classes,
-                                   out_size=out_size)
+
+        out_convs = []
+        for i in range(len(mid_channel_ls)):
+            out_convs.append(OutLayer(in_channels=mid_channel_ls[i], mid_channels=mid_channel_ls[0],
+                                      n_classes=n_classes, out_size=out_size))
+        self._out_convs = nn.ModuleList(out_convs)
 
     def forward(self, x, aux=True):
-        x_a, x_b, x_c, x_d = self._multi_scale_backbone(x)
-        x_a = self._reducer_a(x_a)
-        x_b = self._reducer_b(x_b)
-        x_c = self._reducer_c(x_c)
-        x_d = self._reducer_d(x_d)
+        x_list = self._multi_scale_backbone(x)[-len(self._reducers):]  # BackBoneの後ろからレイヤー数分取得する.
+        reduced_x_list = []
+        for i, x in enumerate(x_list):
+            reduced_x_list.append(self._reducers[i](x))
 
-        out_a, out_b, out_c = self._segmentation_shelf([x_a, x_b, x_c, x_d])
+        x_list = self._segmentation_shelf(reduced_x_list)
         if not aux:
-            return self.conv_out(out_a)
-        return self.conv_out(out_a), self.conv_out_b(out_b), self.conv_out_c(out_c)
+            return self._out_convs[0](x_list[0])
+
+        outs = []
+        for i in range(len(self._out_convs)):
+            outs.append(self._out_convs[i](x_list[i]))
+        return outs

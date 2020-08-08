@@ -1,3 +1,4 @@
+from enum import Enum
 import numpy as np
 
 from .block import *
@@ -5,6 +6,39 @@ from .basic import *
 from torch.nn import functional as F
 import torchvision
 from ..utils import *
+
+__all__ = ['BackBoneKey', 'BACKBONE_CHANNEL_COUNT_DICT', 'FeatureDecoder', 'FeatureMapBackBone', 'VGGFeatureBackBone',
+           'ResNetMultiScaleBackBone', 'ResNetBackBone', 'ResNextMultiScaleBackBone', 'AttentionClassifierBranch',]
+
+
+class BackBoneKey(Enum):
+    RESNET_18 = "resnet18"
+    RESNET_34 = "resnet34"
+    RESNET_50 = "resnet50"
+    RESNET_101 = "resnet101"
+    RESNET_152 = "resnet152"
+    RESNEXT_50 = "resnext50"
+    RESNEXT_101 = "resnext101"
+
+    @staticmethod
+    def from_val(val: str):
+        keys = [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNET_101,
+                BackBoneKey.RESNET_152, BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]
+        for key in keys:
+            if key.value == val:
+                return key
+        return None
+
+
+BACKBONE_CHANNEL_COUNT_DICT = {
+    BackBoneKey.RESNET_18: [64, 128, 256, 512],
+    BackBoneKey.RESNET_34: [64, 128, 256, 512],
+    BackBoneKey.RESNET_50: [256, 512, 1024, 2048],
+    BackBoneKey.RESNET_101: [512, 1024, 2048, 4096],
+    BackBoneKey.RESNET_152: [512, 1024, 2048, 4096],  # TODO
+    BackBoneKey.RESNEXT_50: [512, 1024, 2048, 4096],  # TODO
+    BackBoneKey.RESNEXT_101: [512, 1024, 2048, 4096],  # TODO
+}
 
 
 class FeatureMapBackBone(nn.Module):
@@ -181,19 +215,46 @@ class AttentionClassifierBranch(nn.Module):
 
 
 class ResNetMultiScaleBackBone(nn.Module):
-    def __init__(self, resnet_type="resnet18", pretrained=True):
+    def __init__(self, resnet_type: BackBoneKey = BackBoneKey.RESNET_18, pretrained=True):
         super().__init__()
-        assert resnet_type in ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
-        if resnet_type == "resnet18":
+        assert resnet_type in [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50,
+                               BackBoneKey.RESNET_101, BackBoneKey.RESNET_152, ]
+        if resnet_type == BackBoneKey.RESNET_18:
             self.resnet_model = torchvision.models.resnet18(pretrained=pretrained)
-        elif resnet_type == "resnet34":
+        elif resnet_type == BackBoneKey.RESNET_34:
             self.resnet_model = torchvision.models.resnet34(pretrained=pretrained)
-        elif resnet_type == "resnet50":
+        elif resnet_type == BackBoneKey.RESNET_50:
             self.resnet_model = torchvision.models.resnet50(pretrained=pretrained)
-        elif resnet_type == "resnet101":
+        elif resnet_type == BackBoneKey.RESNET_101:
             self.resnet_model = torchvision.models.resnet101(pretrained=pretrained)
-        elif resnet_type == "resnet152":
+        elif resnet_type == BackBoneKey.RESNET_152:
             self.resnet_model = torchvision.models.resnet152(pretrained=pretrained)
+
+    def forward(self, x):
+        """
+        :param x: (Batch size, 3, height, width)
+        :return: (Batch size, 64, height/2, width/2), (Batch size, 128, height/4, width/4),
+        (Batch size, 256, height/8, width/8), (Batch size, 512, height/16, width/16)
+        """
+        x = self.resnet_model.conv1(x)
+        x = self.resnet_model.bn1(x)
+        x = self.resnet_model.relu(x)
+        x = self.resnet_model.maxpool(x)
+        out1 = self.resnet_model.layer1(x)
+        out2 = self.resnet_model.layer2(out1)
+        out3 = self.resnet_model.layer3(out2)
+        out4 = self.resnet_model.layer4(out3)
+        return out1, out2, out3, out4
+
+
+class ResNextMultiScaleBackBone(nn.Module):
+    def __init__(self, resnext_type: BackBoneKey = BackBoneKey.RESNEXT_50, pretrained=True):
+        super().__init__()
+        assert resnext_type in [BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]
+        if resnext_type == BackBoneKey.RESNEXT_50:
+            self.resnet_model = torchvision.models.resnext50_32x4d(pretrained=pretrained)
+        elif resnext_type.value == BackBoneKey.RESNEXT_101:
+            self.resnet_model = torchvision.models.resnext101_32x8d(pretrained=pretrained)
 
     def forward(self, x):
         """
