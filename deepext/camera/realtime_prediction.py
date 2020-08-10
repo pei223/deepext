@@ -5,6 +5,7 @@ import cv2
 import time
 import numpy as np
 from ..models.base import BaseModel
+from ..utils.image_utils import *
 
 
 class RealtimePrediction:
@@ -34,9 +35,9 @@ class RealtimePrediction:
 
             start = time.time()
             result_img = self.calc_result(frame)
+            infer_speed = time.time() - start
             result_img = self._arrange_image_for_video_writing(result_img, frame_size)
-            if verbose:
-                print(f"Prediction time:    {time.time() - start}s")
+            result_img = self._write_inference_speed(result_img, infer_speed)
             if video_writer:
                 video_writer.write(result_img)
             cv2.imshow('frame', result_img)
@@ -48,6 +49,14 @@ class RealtimePrediction:
             video_writer.release()
         capture.release()
         cv2.destroyAllWindows()
+
+    def _write_inference_speed(self, frame: np.ndarray, infer_time: float):
+        text = f"Inference speed:   {infer_time} s / frame"
+        offsets = (0, 25)
+        background_color = (255, 255, 255)
+        text_color = (0, 0, 255)
+        return draw_text_with_background(frame, background_color=background_color, text_color=text_color, text=text,
+                                         offsets=offsets, font_scale=0.5)
 
     @abstractmethod
     def calc_result(self, frame: np.ndarray) -> np.ndarray:

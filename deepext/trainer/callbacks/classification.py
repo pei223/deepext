@@ -1,7 +1,6 @@
 import numpy as np
 from typing import List
 from torch.utils.data import Dataset
-from torchvision.transforms import ToPILImage
 
 from ...utils import try_cuda, image_utils
 from ...models.classification import AttentionBranchNetwork
@@ -37,7 +36,7 @@ class GenerateAttentionMapCallback:
         heatmap_img = attention_map[0][0].cpu().detach().numpy()
         origin_img, heatmap_img = (origin_img * 255).astype("uint8"), (heatmap_img * 255).astype("uint8")
 
-        blended_img = image_utils.combine_heatmap(origin_img, heatmap_img, origin_alpha=0.4)
+        blended_img = image_utils.co111mbine_heatmap(origin_img, heatmap_img, origin_alpha=0.5)
 
         # NOTE OpenCVで保存した方が速いが、日本語対応してないからこうしてる
         image_utils.cv_to_pil(blended_img).save(self._image_path(epoch, pred_label, label))

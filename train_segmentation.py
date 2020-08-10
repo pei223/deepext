@@ -160,7 +160,7 @@ if __name__ == "__main__":
     metric_for_graph = SegmentationIoUByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
                                                         metric_for_graph=metric_for_graph,
-                                                        save_filepath="learning_curve.png")
+                                                        save_filepath="segmentation_learning_curve.png")
 
     # Training.
     Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,

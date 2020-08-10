@@ -115,7 +115,7 @@ if __name__ == "__main__":
     metric_for_graph = DetectionIoUByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=10,
                                                         metric_for_graph=metric_for_graph,
-                                                        save_filepath="learning_curve.png")
+                                                        save_filepath="detection_learning_curve.png")
     # Training.
     Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader, epochs=args.epoch,
                        callbacks=callbacks, lr_scheduler_func=lr_scheduler, metric_ls=metric_ls,

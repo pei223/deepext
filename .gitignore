@@ -209,7 +209,7 @@ dmypy.json
 /saved_weights
 .env.json
 
-learning_curve.png
+*learning_curve.png
 output.mp4
 
 # End of https://www.gitignore.io/api/python,pycharm

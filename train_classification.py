@@ -118,9 +118,9 @@ if __name__ == "__main__":
                                                           label_names=dataset_setting.label_names))
     metric_ls = [ClassificationAccuracyByClasses(dataset_setting.label_names), ]
     metric_for_graph = ClassificationAccuracyByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_TOTAL)
-    learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
+    learning_curve_visualizer = LearningCurveVisualizer(metric_name="Accuracy", ignore_epoch=0,
                                                         metric_for_graph=metric_for_graph,
-                                                        save_filepath="learning_curve.png")
+                                                        save_filepath="classification_learning_curve.png")
     # Training.
     Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
                        epochs=args.epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler,
