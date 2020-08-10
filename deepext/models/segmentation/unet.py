@@ -11,7 +11,8 @@ __all__ = ['UNet', 'ResUNet']
 
 
 class UNet(SegmentationModel, nn.Module):
-    def __init__(self, n_input_channels, n_output_channels, first_layer_channels: int = 64, lr=1e-3, loss_type="ce"):
+    def __init__(self, n_input_channels, n_output_channels, first_layer_channels: int = 64, lr=1e-3,
+                 loss_func: nn.Module = None):
         super(UNet, self).__init__()
 
         self._first_layer_channels = first_layer_channels
@@ -31,7 +32,7 @@ class UNet(SegmentationModel, nn.Module):
         self.apply(init_weights_func)
 
         self._optimizer = torch.optim.Adam(lr=lr, params=self.parameters())
-        self._loss_func = SegmentationTypedLoss(loss_type=loss_type)
+        self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
 
     def forward(self, x):
         """
@@ -119,8 +120,8 @@ def init_weights_func(m):
 
 
 class ResUNet(UNet):
-    def __init__(self, n_input_channels, n_output_channels, lr=1e-3, loss_type="ce"):
-        super().__init__(n_input_channels, n_output_channels, lr=lr, loss_type=loss_type)
+    def __init__(self, n_input_channels, n_output_channels, lr=1e-3, loss_func: nn.Module = None):
+        super().__init__(n_input_channels, n_output_channels, lr=lr, loss_func=loss_func)
 
     def down_sampling_layer(self, n_input_channels: int, n_out_channels: int):
         return BottleNeck(n_input_channels, mid_channels=n_input_channels, out_channels=n_out_channels, stride=2)

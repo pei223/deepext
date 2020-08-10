@@ -165,3 +165,12 @@ def get_image_size(img: Image.Image or torch.Tensor or np.ndarray):
     elif isinstance(img, np.ndarray):
         return img.shape[:2]
     return img.shape[1:]
+
+
+def combine_heatmap(origin_image: np.ndarray, heatmap_img: np.ndarray, origin_alpha=0.5):
+    assert origin_image.ndim == 3
+    assert heatmap_img.ndim == 2
+
+    heatmap_img = cv2.applyColorMap(heatmap_img, cv2.COLORMAP_JET)
+    blended_img = cv2.addWeighted(origin_image, origin_alpha, heatmap_img, 1. - origin_alpha, 0)
+    return blended_img

@@ -2,11 +2,13 @@ from typing import Tuple, List
 
 
 class DataSetSetting:
-    def __init__(self, dataset_type: str, size: Tuple[int, int], n_classes: int, label_names: List[str] = None):
+    def __init__(self, dataset_type: str, size: Tuple[int, int], n_classes: int, dataset_build_func,
+                 label_names: List[str] = None):
         self.dataset_type = dataset_type
         self.size = size
         self.n_classes = n_classes
         self.label_names = label_names
+        self.dataset_build_func = dataset_build_func
 
     @staticmethod
     def from_dataset_type(dataset_setting_ls: List, dataset_type: str):

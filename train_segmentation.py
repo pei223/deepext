@@ -16,35 +16,83 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
-# NOTE モデル・データセットはここを追加
-MODEL_PSPNET = "pspnet"
-MODEL_UNET = "unet"
-MODEL_SHELFNET_REALTIME = "shelfnet_realtime"
-MODEL_CUSTOM_SHELFNET = "custom_shelfnet"
-MODEL_SHALLOW_SHELFNET = "shallow_shelfnet"
-MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_CUSTOM_SHELFNET, MODEL_SHELFNET_REALTIME, MODEL_SHALLOW_SHELFNET]
-SUBMODEL_RESNET = "resnet"
-SUBMODEL_TYPES = [SUBMODEL_RESNET]
-DATASET_VOC2012 = "voc2012"
-DATASET_VOC2007 = "voc2007"
-DATASET_CITYSCAPE = "cityscape"
-DATASET_TYPES = [DATASET_VOC2007, DATASET_VOC2012, DATASET_CITYSCAPE]
-settings = [DataSetSetting(dataset_type=DATASET_VOC2012, size=(256, 256), n_classes=21,
-                           label_names=["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair",
-                                        "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
-                                        "sheep", "sofa", "train", "tvmonitor"]),
-            DataSetSetting(dataset_type=DATASET_VOC2007, size=(256, 256), n_classes=21,
-                           label_names=["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair",
-                                        "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
-                                        "sheep", "sofa", "train", "tvmonitor"]),
-            DataSetSetting(dataset_type=DATASET_CITYSCAPE, size=(256, 512), n_classes=34,
-                           label_names=[
-                               'ego vehicle', 'rectification', 'out of roi', 'static', 'dynamic', 'ground', 'road',
-                               'sidewalk', 'parking', 'rail track', 'building', 'wall', 'fence', 'guard rail', 'bridge',
-                               'tunnel', 'pole', 'polegroup', 'traffic light', 'traffic sign', 'vegetation', 'terrain',
-                               'sky', 'person', 'rider', 'car', 'truck', 'bus', 'caravan', 'trailer', 'train',
-                               'motorcycle', 'bicycle', 'license plate'
-                           ])]
+voc_focal_loss = FocalLoss(weights=[0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ])
+
+
+def build_pspnet(dataset_setting, args):
+    if args.submodel is None:
+        return PSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=args.lr)
+    if args.submodel == "resnet":
+        return ResPSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=args.lr)
+    assert f"Invalid sub model type: {args.submodel}.  {args.model} Model require resnet or none."
+
+
+def build_unet(dataset_setting, args):
+    loss_func = voc_focal_loss if args.dataset in ["voc2007", "voc2012"] else None
+    if args.submodel is None:
+        return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=args.lr, loss_func=loss_func)
+    if args.submodel == "resnet":
+        return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=args.lr, loss_func=loss_func)
+    assert f"Invalid sub model type: {args.submodel}.  {args.model} Model require resnet or none."
+
+
+def build_custom_shelfnet(dataset_setting, args):
+    loss_func = voc_focal_loss if args.dataset in ["voc2007", "voc2012"] else None
+    return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=args.lr, out_size=dataset_setting.size,
+                          loss_func=loss_func, backbone=BackBoneKey.from_val(args.submodel))
+
+
+def build_shallow_shelfnet(dataset_setting, args):
+    return ShallowShelfNet(n_classes=dataset_setting.n_classes, lr=args.lr, out_size=dataset_setting.size,
+                           loss_type="ce", backbone=args.submodel)
+
+
+def build_shelfnet_realtime(dataset_setting, args):
+    return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
+                            lr=args.lr)
+
+
+def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
+    train_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year=year,
+                                                         image_set='train', transforms=train_transforms)
+    test_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year=year,
+                                                        image_set='trainval', transforms=test_transforms)
+    return train_dataset, test_dataset
+
+
+def build_cityscape_dataset(root_dir: str, train_transforms, test_transforms):
+    train_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="train", target_type='semantic',
+                                                    transforms=train_transforms)
+    test_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="test", target_type='semantic',
+                                                   transforms=test_transforms)
+    return train_dataset, test_dataset
+
+
+voc_classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+               "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
+DATASET_DICT = {
+    "voc2012": DataSetSetting(dataset_type="voc2012", size=(256, 256), n_classes=21, label_names=voc_classes,
+                              dataset_build_func=lambda root_dir, train_transforms, test_transforms:
+                              build_voc_dataset("2012", root_dir, train_transforms, test_transforms)),
+    "voc2007": DataSetSetting(dataset_type="voc2007", size=(256, 256), n_classes=21, label_names=voc_classes,
+                              dataset_build_func=lambda root_dir, train_transforms, test_transforms:
+                              build_voc_dataset("2007", root_dir, train_transforms, test_transforms)),
+    "cityscape": DataSetSetting(dataset_type="cityscape", size=(256, 512), n_classes=34,
+                                label_names=['ego vehicle', 'rectification', 'out of roi', 'static', 'dynamic',
+                                             'ground', 'road', 'sidewalk', 'parking', 'rail track', 'building',
+                                             'wall', 'fence', 'guard rail', 'bridge', 'tunnel', 'pole',
+                                             'polegroup', 'traffic light', 'traffic sign', 'vegetation',
+                                             'terrain', 'sky', 'person', 'rider', 'car', 'truck', 'bus',
+                                             'caravan', 'trailer', 'train', 'motorcycle', 'bicycle',
+                                             'license plate'], dataset_build_func=build_cityscape_dataset)
+}
+MODEL_DICT = {
+    "pspnet": build_pspnet,
+    "unet": build_unet,
+    "custom_shelfnet": build_custom_shelfnet,
+    "shallow_shelfnet": build_shallow_shelfnet,
+    "shelfnet_realtime": build_shelfnet_realtime,
+}
 
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
@@ -64,105 +112,57 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
         (ToTensor(), PilToTensor()),
         (None, ImageToOneHot(setting.n_classes))
     ])
-    train_dataset, test_dataset = None, None
-    class_index_dict = {}
-    for i, label_name in enumerate(setting.label_names):
-        class_index_dict[label_name] = i
-    # NOTE データセットはここを追加
-    if DATASET_VOC2012 == setting.dataset_type:
-        train_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year='2012',
-                                                             image_set='train', transforms=train_transforms)
-        test_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year='2012',
-                                                            image_set='trainval', transforms=test_transforms)
-    elif DATASET_VOC2007 == setting.dataset_type:
-        train_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year='2007',
-                                                             image_set='train', transforms=train_transforms)
-        test_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year='2007',
-                                                            image_set='trainval', transforms=test_transforms)
-    elif DATASET_CITYSCAPE == setting.dataset_type:
-        train_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="train", target_type='semantic',
-                                                        transforms=train_transforms)
-        test_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="test", target_type='semantic',
-                                                       transforms=test_transforms)
-    assert train_dataset is not None and test_dataset is not None, f"Not supported setting: {setting.dataset_type}"
+
+    train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=True), train_dataset, test_dataset
 
 
-def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, submodel_type: str = None):
-    # NOTE モデルはここを追加
-    if MODEL_PSPNET == model_type:
-        if submodel_type == "resnet":
-            return ResPSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=lr)
-        return PSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=lr)
-    elif MODEL_UNET == model_type:
-        if submodel_type == "resnet":
-            return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
-        return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=lr)
-    elif MODEL_CUSTOM_SHELFNET == model_type:
-        return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size,
-                              loss_func=FocalLoss(
-                                  weights=[0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ]),
-                              backbone=BackBoneKey.from_val(submodel_type))
-    elif MODEL_SHELFNET_REALTIME == model_type:
-        return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
-                                lr=lr)
-    elif MODEL_SHALLOW_SHELFNET == model_type:
-        return ShallowShelfNet(n_classes=dataset_setting.n_classes, lr=lr, out_size=dataset_setting.size,
-                               loss_type="ce", backbone=submodel_type)
-    assert f"Invalid model type. Valid models is {MODEL_TYPES}"
-
-
-parser = argparse.ArgumentParser(description='Pytorch Image detection training.')
+parser = argparse.ArgumentParser(description='Pytorch Image segmentation training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default=DATASET_VOC2012, help=f'Dataset type in {DATASET_TYPES}')
+parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DATASET_DICT.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
-parser.add_argument('--model', type=str, default=MODEL_PSPNET, help=f"Model type in {MODEL_TYPES}")
+parser.add_argument('--model', type=str, default="custom_shelfnet", help=f"Model type in {list(MODEL_DICT.keys())}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
-parser.add_argument('--image_size', type=int, default=None, help="Image size(default is 256)")
-parser.add_argument('--submodel', type=str, default=None, help=f'Type of model in {SUBMODEL_TYPES}')
+parser.add_argument('--image_size', type=int, default=256, help="Image size(default is 256)")
+parser.add_argument('--submodel', type=str, default=None, help=f'Type of sub model(resnet, resnet18, resnet34...).')
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     # Fetch dataset.
-    dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
-    if args.image_size:
-        img_size = (args.image_size, args.image_size)
-        dataset_setting.set_size(img_size)
+    dataset_setting = DATASET_DICT.get(args.dataset)
+    assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
+    img_size = (args.image_size, args.image_size)
+    dataset_setting.set_size(img_size)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
     # Fetch model and load weight.
-    model: SegmentationModel = try_cuda(
-        get_model(dataset_setting, model_type=args.model, lr=args.lr, submodel_type=args.submodel))
+    build_model_func = MODEL_DICT.get(args.model)
+    assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
+    model: SegmentationModel = try_cuda(build_model_func(dataset_setting, args))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
-    save_weight_path = args.save_weight_path or f"./{args.model}.pth"
 
-    # Training.
+    # Training setting.
+    lr_scheduler = LearningRateScheduler(args.epoch) if not isinstance(model, ShelfNetRealtime) else None
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=1, model=model,
                                                            dataset=test_dataset))
+    metric_ls = [SegmentationAccuracyByClasses(dataset_setting.label_names),
+                 SegmentationIoUByClasses(dataset_setting.label_names)]
+    metric_for_graph = SegmentationIoUByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_AVERAGE)
+    learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
+                                                        metric_for_graph=metric_for_graph,
+                                                        save_filepath="learning_curve.png")
 
-    trainer = Trainer(model)
-    trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                epochs=args.epoch, callbacks=callbacks,
-                lr_scheduler_func=LearningRateScheduler(args.epoch) if not isinstance(model,
-                                                                                      ShelfNetRealtime) else None,
-                metric_ls=[SegmentationAccuracyByClasses(dataset_setting.label_names),
-                           SegmentationIoUByClasses(dataset_setting.label_names)],
-                calc_metrics_per_epoch=5,
-                learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
-                                                                  ignore_epoch=0,
-                                                                  metric_for_graph=SegmentationIoUByClasses(
-                                                                      dataset_setting.label_names,
-                                                                      val_key=MetricKey.KEY_AVERAGE),
-                                                                  save_filepath="learning_curve.png"))
-    # Save weight.
-    model.save_weight(save_weight_path)
+    # Training.
+    Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
+                       epochs=args.epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler, metric_ls=metric_ls,
+                       calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)

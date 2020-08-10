@@ -5,7 +5,8 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.models.base import BaseModel
-from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, ResNetAttentionBranchNetwork
+from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, \
+    ResNetAttentionBranchNetwork
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, LearningRateScheduler, ModelCheckout
 from deepext.metrics.classification import *
@@ -14,20 +15,50 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
+
 # NOTE モデル・データセットはここを追加
-MODEL_EFFICIENT_NET = "efficientnet"
-MODEL_ATTENTION_BRANCH_NETWORK = "attention_branch_network"
-MODEL_MOBILENET = "mobilenet"
-MODEL_TYPES = [MODEL_EFFICIENT_NET, MODEL_ATTENTION_BRANCH_NETWORK, MODEL_MOBILENET]
-DATASET_STL = "stl"
-DATASET_CIFAR = "cifar"
-DATASET_TYPES = [DATASET_STL, DATASET_CIFAR]
-settings = [DataSetSetting(dataset_type=DATASET_STL, size=(96, 96), n_classes=10,
-                           label_names=['airplane', 'bird', 'car', 'cat', 'deer', 'dog', 'horse', 'monkey', 'ship',
-                                        'truck']),
-            DataSetSetting(dataset_type=DATASET_CIFAR, size=(32, 32), n_classes=10,
-                           label_names=['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship',
-                                        'truck'])]
+def build_efficientnet(dataset_setting, args):
+    return EfficientNet(num_classes=dataset_setting.n_classes, lr=args.lr,
+                        network=f"efficientnet-b{args.efficientnet_scale}")
+
+
+def build_mobilenet(dataset_setting, args):
+    return MobileNetV3(num_classes=dataset_setting.n_classes, lr=args.lr, pretrained=False)
+
+
+def build_attention_branch_network(dataset_setting, args):
+    return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=args.lr))
+
+
+def build_stl_dataset(root_dir: str, train_transforms, test_transforms):
+    train_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="train",
+                                               transform=train_transforms)
+    test_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="test",
+                                              transform=test_transforms)
+    return train_dataset, test_dataset
+
+
+def build_cifar_dataset(root_dir: str, train_transforms, test_transforms):
+    train_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=True,
+                                                 transform=train_transforms)
+    test_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=False,
+                                                transform=test_transforms)
+    return train_dataset, test_dataset
+
+
+DATASET_DICT = {
+    "stl": DataSetSetting(dataset_type="stl", size=(96, 96), n_classes=10,
+                          label_names=['airplane', 'bird', 'car', 'cat', 'deer', 'dog', 'horse', 'monkey', 'ship',
+                                       'truck'], dataset_build_func=build_stl_dataset),
+    "cifar": DataSetSetting(dataset_type="cifar", size=(32, 32), n_classes=10,
+                            label_names=['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse',
+                                         'ship', 'truck'], dataset_build_func=build_cifar_dataset)
+}
+MODEL_DICT = {
+    "efficientnet": build_efficientnet,
+    "mobilenet": build_mobilenet,
+    "attention_branch_network": build_attention_branch_network
+}
 
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
@@ -40,81 +71,58 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
          ToTensor(),
          RandomErasing(), ])
     test_transforms = Compose([Resize(setting.size), ToTensor()])
-    train_dataset, test_dataset = None, None
-    # NOTE データセットはここを追加
-    if DATASET_STL == setting.dataset_type:
-        train_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="train",
-                                                   transform=train_transforms)
-        test_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="test",
-                                                  transform=test_transforms)
-    elif DATASET_CIFAR == setting.dataset_type:
-        train_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=True,
-                                                     transform=train_transforms)
-        test_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=False,
-                                                    transform=test_transforms)
-    assert train_dataset is not None and test_dataset is not None, f"Not supported setting: {setting.dataset_type}"
+    train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=True), train_dataset, test_dataset
-
-
-def get_model(dataset_setting: DataSetSetting, model_type: str, lr: float, efficientnet_scale: int = 0):
-    # NOTE モデルはここを追加
-    if MODEL_EFFICIENT_NET == model_type:
-        return EfficientNet(num_classes=dataset_setting.n_classes, lr=lr, network=f"efficientnet-b{efficientnet_scale}")
-    elif MODEL_ATTENTION_BRANCH_NETWORK == model_type:
-        return try_cuda(ResNetAttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=lr))
-    elif MODEL_MOBILENET == model_type:
-        return MobileNetV3(num_classes=dataset_setting.n_classes, lr=lr, pretrained=False)
-    assert f"Invalid model type. Valid models is {MODEL_TYPES}"
 
 
 parser = argparse.ArgumentParser(description='Pytorch Image classification training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default=DATASET_STL, help=f'Dataset type in {DATASET_TYPES}')
+parser.add_argument('--dataset', type=str, default="stl", help=f'Dataset type in {list(DATASET_DICT.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
-parser.add_argument('--model', type=str, default=MODEL_MOBILENET, help=f"Model type in {MODEL_TYPES}")
+parser.add_argument('--model', type=str, default="mobilenet", help=f"Model type in {list(MODEL_DICT.keys())}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--efficientnet_scale', type=int, default=0, help="Number of scale of EfficientNet.")
+parser.add_argument('--image_size', type=int, default=None, help="Image size(default is 256)")
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     # Fetch dataset.
-    dataset_setting = DataSetSetting.from_dataset_type(settings, args.dataset)
+    dataset_setting = DATASET_DICT.get(args.dataset)
+    assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
+    if args.image_size:
+        img_size = (args.image_size, args.image_size)
+        dataset_setting.set_size(img_size)
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
     # Fetch model and load weight.
-    model: BaseModel = try_cuda(
-        get_model(dataset_setting, model_type=args.model, lr=args.lr, efficientnet_scale=args.efficientnet_scale))
+    build_model_func = MODEL_DICT.get(args.model)
+    assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
+    model = try_cuda(build_model_func(dataset_setting, args))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
-    save_weight_path = args.save_weight_path or f"./{args.model}.pth"
 
-    # Training.
+    # Training setting.
+    lr_scheduler = LearningRateScheduler(args.epoch)
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):
-            callbacks = [
-                GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=1,
-                                             dataset=test_dataset)]
-
-    trainer = Trainer(model)
-    trainer.fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                epochs=args.epoch, callbacks=callbacks,
-                lr_scheduler_func=LearningRateScheduler(args.epoch),
-                metric_ls=[ClassificationAccuracyByClasses(dataset_setting.label_names), ],
-                calc_metrics_per_epoch=5,
-                learning_curve_visualizer=LearningCurveVisualizer(metric_name="mIoU",
-                                                                  ignore_epoch=0,
-                                                                  metric_for_graph=ClassificationAccuracyByClasses(
-                                                                      dataset_setting.label_names,
-                                                                      val_key=MetricKey.KEY_TOTAL),
-                                                                  save_filepath="learning_curve.png"))
-
-    # Save weight.
-    model.save_weight(save_weight_path)
+            callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=1,
+                                                          dataset=test_dataset,
+                                                          label_names=dataset_setting.label_names))
+    metric_ls = [ClassificationAccuracyByClasses(dataset_setting.label_names), ]
+    metric_for_graph = ClassificationAccuracyByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_TOTAL)
+    learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
+                                                        metric_for_graph=metric_for_graph,
+                                                        save_filepath="learning_curve.png")
+    # Training.
+    Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
+                       epochs=args.epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler,
+                       metric_ls=metric_ls, calc_metrics_per_epoch=5,
+                       learning_curve_visualizer=learning_curve_visualizer)
