@@ -7,8 +7,8 @@ from torchvision.transforms import ToTensor, ToPILImage
 from torch.utils.data import DataLoader
 from statistics import mean
 
-from ..layers import *
-from ..utils import *
+from deepext.layers import *
+from deepext.utils import *
 
 
 class Generator(nn.Module):
