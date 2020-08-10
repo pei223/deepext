@@ -2,14 +2,14 @@ import torch.optim as optim
 import torch
 import numpy as np
 
-from ...base.base_model import BaseModel
+from ...base import ClassificationModel
 from .mobilenetv3_lib.model import mobilenetv3
 from ....utils.tensor_util import try_cuda
 
 __all__ = ['MobileNetV3']
 
 
-class MobileNetV3(BaseModel):
+class MobileNetV3(ClassificationModel):
     def __init__(self, num_classes, lr=1e-4, mode='small', pretrained=True):
         super().__init__()
         self._num_classes = num_classes
@@ -70,11 +70,8 @@ class MobileNetV3(BaseModel):
         return self
 
     def get_model_config(self):
-        config = {}
-        config['model_name'] = 'MobileNetV3'
-        config['num_classes'] = self._num_classes
-        config['optimizer'] = self._optimizer.__class__.__name__
-        config['mode'] = self._mode
+        config = {'model_name': 'MobileNetV3', 'num_classes': self._num_classes,
+                  'optimizer': self._optimizer.__class__.__name__, 'mode': self._mode}
         return config
 
     def get_optimizer(self):

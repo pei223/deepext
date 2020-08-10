@@ -2,14 +2,14 @@ import torch.optim as optim
 import torch
 import torch.nn as nn
 
-from ....models.base.base_model import BaseModel
+from ....models.base.classification_model import ClassificationModel
 from ....utils.tensor_util import try_cuda
 from .efficientnet_lib.model import EfficientNetPredictor
 
 __all__ = ['EfficientNet']
 
 
-class EfficientNet(BaseModel):
+class EfficientNet(ClassificationModel):
     def __init__(self, num_classes, network='efficientnet-b0', lr=0.1, momentum=0.9, weight_decay=1e-4):
         super().__init__()
         self._num_classes = num_classes

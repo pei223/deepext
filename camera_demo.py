@@ -1,66 +1,103 @@
 import argparse
-from deepext.models.base import SegmentationModel, DetectionModel
+from deepext.models.base import SegmentationModel, DetectionModel, ClassificationModel, AttentionClassificationModel
 from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet
 from deepext.models.object_detection import EfficientDetector
-from deepext.camera import RealtimeDetection, RealtimeSegmentation
+from deepext.models.classification import EfficientNet, AttentionBranchNetwork, ResNetAttentionBranchNetwork, \
+    MobileNetV3
+from deepext.camera import RealtimeDetection, RealtimeSegmentation, RealtimeAttentionClassification, \
+    RealtimeClassification
 from deepext.utils import *
 
+
+def build_pspnet(args):
+    if args.submodel == "resnet":
+        return ResPSPNet(n_classes=args.n_classes, img_size=args.image_size)
+    return PSPNet(n_classes=args.n_classes, img_size=args.image_size)
+
+
+def build_unet(args):
+    if args.submodel == "resnet":
+        return ResUNet(n_input_channels=3, n_output_channels=args.n_classes)
+    return UNet(n_input_channels=3, n_output_channels=args.n_classes)
+
+
+def build_shelfnet(args):
+    return CustomShelfNet(n_classes=args.n_classes, out_size=args.image_size)
+
+
+def build_efficientdet(args):
+    return EfficientDetector(num_classes=args.n_classes, network=f"efficientdet-d{args.model_scale}")
+
+
+def build_mobilenet(args):
+    return MobileNetV3(num_classes=args.n_classes, pretrained=False)
+
+
+def build_attention_branch_network(args):
+    if args.submodel == "resnet":
+        return ResNetAttentionBranchNetwork(n_classes=args.n_classes)
+    return AttentionBranchNetwork(n_classes=args.n_classes)
+
+
+def build_efficientnet(args):
+    return EfficientNet(num_classes=args.n_classes, network=f"efficientnet-d{args.model_scale}")
+
+
 # NOTE モデル・データセットはここを追加
-MODEL_PSPNET = "pspnet"
-MODEL_UNET = "unet"
-MODEL_SHELFNET = "custom_shelfnet"
-MODEL_EFFICIENTDET = "efficientdet"
-MODEL_TYPES = [MODEL_PSPNET, MODEL_UNET, MODEL_SHELFNET, MODEL_EFFICIENTDET]
-SUBMODEL_RESNET = "resnet"
-SUBMODEL_TYPES = [SUBMODEL_RESNET]
-
-
-def get_model(n_classes, size, model_type: str, submodel_type: str = None, model_scale: int = 0):
-    # NOTE モデルはここを追加
-    if MODEL_PSPNET == model_type:
-        if submodel_type == "resnet":
-            return ResPSPNet(n_classes=n_classes, img_size=size)
-        return PSPNet(n_classes=n_classes, img_size=size)
-    elif MODEL_UNET == model_type:
-        if submodel_type == "resnet":
-            return ResUNet(n_input_channels=3, n_output_channels=n_classes)
-        return UNet(n_input_channels=3, n_output_channels=n_classes)
-    elif MODEL_SHELFNET == model_type:
-        return CustomShelfNet(n_classes=n_classes, out_size=size)
-    elif MODEL_EFFICIENTDET == model_type:
-        return EfficientDetector(num_classes=n_classes, network=f"efficientdet-d{model_scale}")
-    assert f"Invalid model type. Valid models is {MODEL_TYPES}"
-
+# TODO ここ他のTrainスクリプトと共通化したい
+MODEL_BUILD_DICT = {
+    "pspnet": build_pspnet,
+    "unet": build_unet,
+    "custom_shelfnet": build_shelfnet,
+    "efficientdet": build_efficientdet,
+    "efficientnet": build_efficientnet,
+    "mobilenet": build_mobilenet,
+    "attention_branch_network": build_attention_branch_network,
+}
 
 parser = argparse.ArgumentParser(description='Pytorch Image detection training.')
 
-parser.add_argument('--model', type=str, default=MODEL_PSPNET, help=f"Model type in {MODEL_TYPES}")
+parser.add_argument('--model', type=str, required=True, help=f"Model type in {list(MODEL_BUILD_DICT.keys())}")
 parser.add_argument('--load_weight_path', type=str, help="Saved weight path", required=True)
 parser.add_argument('--image_size', type=int, default=256, help="Image size(default is 256)")
 parser.add_argument('--n_classes', type=int, help="Class number.", required=True)
-parser.add_argument('--submodel', type=str, default=None, help=f'Type of model in {SUBMODEL_TYPES}')
-parser.add_argument('--efficientdet_scale', type=int, default=0, help="Scale of EfficientDet.")
+parser.add_argument('--submodel', type=str, default=None, help=f'Type of model(ResNet).')
+parser.add_argument('--model_scale', type=int, default=0, help="Scale of models(EfficientDet, EfficientNet).")
 parser.add_argument('--label_names_path', type=str, default="voc_label_names.txt",
-                    help="File path of label names (Detection only)")
+                    help="File path of label names (Classification and Detection only)")
+
+
+def read_label_names(args):
+    assert args.label_names_path is not None
+    with open(args.label_names_path, "r") as file:
+        label_names = []
+        for label in file:
+            label_names.append(label)
+    assert len(label_names) != 0
+    return label_names
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     # Fetch model and load weight.
-    model = try_cuda(
-        get_model(args.n_classes, args.image_size, model_type=args.model, submodel_type=args.submodel,
-                  model_scale=args.efficientdet_scale))
+    build_model_func = MODEL_BUILD_DICT.get(args.model)
+    assert build_model_func is not None, f"Invalid model type:   {args.model}."
+    model = try_cuda(build_model_func(args))
     model.load_weight(args.load_weight_path)
 
     if isinstance(model, SegmentationModel):
         RealtimeSegmentation(model=model, img_size_for_model=(args.image_size, args.image_size)).realtime_predict(
             video_output_path="output.mp4")
     elif isinstance(model, DetectionModel):
-        assert args.label_names_path is not None
-        with open(args.label_names_path, "r") as file:
-            label_names = []
-            for label in file:
-                label_names.append(label)
-        assert len(label_names) != 0
+        label_names = read_label_names(args)
         RealtimeDetection(model=model, img_size_for_model=(args.image_size, args.image_size),
                           label_names=label_names).realtime_predict(video_output_path="output.mp4")
+    elif isinstance(model, AttentionClassificationModel):
+        label_names = read_label_names(args)
+        RealtimeAttentionClassification(model=model, img_size_for_model=(args.image_size, args.image_size),
+                                        label_names=label_names).realtime_predict(video_output_path="output.mp4")
+    elif isinstance(model, ClassificationModel):
+        label_names = read_label_names(args)
+        RealtimeClassification(model=model, img_size_for_model=(args.image_size, args.image_size),
+                               label_names=label_names).realtime_predict(video_output_path="output.mp4")

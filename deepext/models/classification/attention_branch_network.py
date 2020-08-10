@@ -1,5 +1,5 @@
 from typing import Tuple
-from ..base import BaseModel
+from ..base import AttentionClassificationModel
 from ...layers.subnetwork import *
 from ...layers.block import *
 from ...layers.basic import *
@@ -8,7 +8,7 @@ from ...utils import *
 __all__ = ['AttentionBranchNetwork', 'ResNetAttentionBranchNetwork']
 
 
-class AttentionBranchNetwork(nn.Module, BaseModel):
+class AttentionBranchNetwork(nn.Module, AttentionClassificationModel):
     def __init__(self, n_classes: int, first_layer_channels=32, n_blocks=3, lr=1e-4):
         super().__init__()
         self._n_classes = n_classes
@@ -84,6 +84,12 @@ class AttentionBranchNetwork(nn.Module, BaseModel):
         with torch.no_grad():
             x = try_cuda(x).float()
             return self(x)[0].cpu().numpy()
+
+    def predict_label_and_heatmap_impl(self, x) -> Tuple[np.ndarray, np.ndarray]:
+        self.eval()
+        with torch.no_grad():
+            x = try_cuda(x).float()
+            return self(x)[0].cpu().numpy(), self(x)[2][:, 0].cpu().numpy()
 
     def save_weight(self, save_path: str):
         dict_to_save = {
