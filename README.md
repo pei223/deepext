@@ -14,6 +14,13 @@ python train_---.py -h
 ```
 <br/>
 
+## Setup
+```
+pip install -r requirements.txt
+torch/torchvisionはこのサイトに従ってインストール(https://pytorch.org/)
+```
+
+
 ## 学習
 ### 画像分類
 ```
