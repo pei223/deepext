@@ -25,10 +25,10 @@ class LearningCurveVisualizer:
 
     def add_metrics(self, train_metric: float or None = None, test_metric: float or None = None,
                     calc_metric_per_epoch: int = 1):
-        if train_metric:
+        if train_metric is not None:
             assert isinstance(train_metric, float) or isinstance(train_metric, int), "グラフ用Metricはスカラー値である必要がある"
             self.metric_train_list += [train_metric for _ in range(calc_metric_per_epoch)]
-        if test_metric:
+        if test_metric is not None:
             assert isinstance(test_metric, float) or isinstance(test_metric, int), "グラフ用Metricはスカラー値である必要がある"
             self.metric_test_list += [test_metric for _ in range(calc_metric_per_epoch)]
 

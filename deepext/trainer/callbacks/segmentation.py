@@ -22,6 +22,6 @@ class GenerateSegmentationImageCallback:
         img_tensor, _ = self._dataset[random_image_index]
         img_tensor = try_cuda(img_tensor)
 
-        result_img = self._model.draw_predicted_result(img_tensor, img_size_for_model=img_tensor.shape[1:],
-                                                       alpha=self._alpha)
+        _, result_img = self._model.calc_segmentation_image(img_tensor, img_size_for_model=img_tensor.shape[1:],
+                                                            alpha=self._alpha)
         Image.fromarray(result_img).save(f"{self._output_dir}/result_image{epoch + 1}.png")

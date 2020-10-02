@@ -12,5 +12,5 @@ class RealtimeDetection(RealtimePrediction):
         self.label_names = label_names
 
     def calc_result(self, frame: np.ndarray):
-        return self.model.draw_predicted_result(frame, img_size_for_model=self.img_size_for_model,
-                                                label_names=self.label_names)
+        return self.model.calc_segmentation_image(frame, img_size_for_model=self.img_size_for_model,
+                                                  label_names=self.label_names)[1]

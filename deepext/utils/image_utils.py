@@ -134,7 +134,7 @@ def img_to_pil(img: Image.Image or torch.Tensor or np.ndarray):
 
 def img_to_cv2(img: Image.Image or torch.Tensor or np.ndarray):
     if isinstance(img, torch.Tensor):
-        img = (img.permute(1, 2, 0).detach().numpy() * 255).astype('uint8')
+        img = (img.permute(1, 2, 0).cpu().detach().numpy() * 255).astype('uint8')
         if img.ndim == 2:
             return img
         elif img.shape[-1] == 3:

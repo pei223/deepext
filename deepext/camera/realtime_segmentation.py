@@ -11,4 +11,4 @@ class RealtimeSegmentation(RealtimePrediction):
         super().__init__(model, img_size_for_model)
 
     def calc_result(self, frame: np.ndarray) -> np.ndarray:
-        return self.model.draw_predicted_result(frame, img_size_for_model=self.img_size_for_model)
+        return self.model.calc_segmentation_image(frame, img_size_for_model=self.img_size_for_model)[1]

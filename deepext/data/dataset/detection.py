@@ -74,7 +74,9 @@ class VOCAnnotationTransform:
                 coordinate = int(bbox_obj[point] if is_target_dict else bbox_obj.find(point).text) - 1
                 coordinate = coordinate * adjust_width_rate if i % 2 == 0 else coordinate * adjust_height_rate
                 bbox.append(coordinate)
-            class_index = self._class_index_dict[class_name]
+            class_index = self._class_index_dict.get(class_name)
+            if class_index is None:  # Except not exist class.
+                continue
             bbox.append(class_index)
             result.append(bbox)
         return result

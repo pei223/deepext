@@ -9,13 +9,13 @@ from ...utils.image_utils import *
 
 
 class SegmentationModel(BaseModel):
-    def draw_predicted_result(self, img: Image.Image or torch.Tensor or np.ndarray,
-                              img_size_for_model: Tuple[int, int], alpha=0.7) -> np.ndarray:
+    def calc_segmentation_image(self, img: Image.Image or torch.Tensor or np.ndarray,
+                                img_size_for_model: Tuple[int, int], alpha=0.7) -> Tuple[np.ndarray, np.ndarray]:
         """
         :param img:
         :param img_size_for_model: Height, Width
         :param alpha:
-        :return:
+        :return: result array, blended image array
         """
         origin_img_size = get_image_size(img)
         img_tensor = img_to_tensor(resize_image(img, img_size_for_model))
@@ -28,10 +28,10 @@ class SegmentationModel(BaseModel):
         origin_img = img_to_cv2(img)
 
         blended_img = self._blend_img(origin_img, result_img, result_alpha=alpha)
-        return blended_img
+        return result_img, blended_img
 
     def _blend_img(self, origin_img: np.ndarray, result_img: np.ndarray, origin_alpha=1.0,
-                   result_alpha=0.6) -> np.ndarray:
+                   result_alpha=0.7) -> np.ndarray:
         assert origin_img.ndim == 3
         assert result_img.ndim == 3
         return cv2.addWeighted(origin_img, origin_alpha, result_img, result_alpha, 0)
