@@ -1,12 +1,13 @@
 import argparse
-from torchvision.transforms import Resize, Compose, RandomResizedCrop, RandomHorizontalFlip, ColorJitter, \
-    RandomRotation, RandomErasing
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.models.base import BaseModel
 from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, \
     ResNetAttentionBranchNetwork
+from deepext.data.transforms import AlbumentationsImageWrapperTransform
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, LearningRateScheduler, ModelCheckout
 from deepext.metrics.classification import *
@@ -63,14 +64,19 @@ MODEL_DICT = {
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
-    train_transforms = Compose(
-        [RandomHorizontalFlip(),
-         ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-         RandomResizedCrop(size=setting.size, scale=(0.5, 2.0)),
-         RandomRotation((-10, 10)),
-         ToTensor(),
-         RandomErasing(), ])
-    test_transforms = Compose([Resize(setting.size), ToTensor()])
+    train_transforms = A.Compose([
+        A.HorizontalFlip(),
+        A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
+        A.Rotate((-90, 90)),
+        ToTensorV2(),
+    ])
+    train_transforms = AlbumentationsImageWrapperTransform(train_transforms)
+
+    test_transforms = A.Compose([
+        A.Resize(setting.size[0], setting.size[1]),
+        ToTensorV2(),
+    ])
+    test_transforms = AlbumentationsImageWrapperTransform(test_transforms)
     train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=True), train_dataset, test_dataset

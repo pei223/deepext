@@ -1,9 +1,11 @@
 import argparse
-from torchvision.transforms import Resize, Compose
 import torchvision
 from torch.utils.data import DataLoader, Dataset
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 
 from deepext.models.base import DetectionModel, BaseModel
+from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
 from deepext.models.object_detection import EfficientDetector, M2Det
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
@@ -25,15 +27,11 @@ def build_m2det(dataset_setting, args):
     return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
 
 
-def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms, class_index_dict, size):
+def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
     train_dataset = torchvision.datasets.VOCDetection(root=root_dir, download=True, year=year,
-                                                      transform=train_transforms, image_set='train',
-                                                      target_transform=Compose(
-                                                          [VOCAnnotationTransform(class_index_dict, size)]))
+                                                      transforms=train_transforms, image_set='train')
     test_dataset = torchvision.datasets.VOCDetection(root=root_dir, download=True, year=year,
-                                                     transform=test_transforms, image_set='trainval',
-                                                     target_transform=Compose(
-                                                         [VOCAnnotationTransform(class_index_dict, size)]))
+                                                     transforms=test_transforms, image_set='trainval')
     return train_dataset, test_dataset
 
 
@@ -41,15 +39,11 @@ voc_classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "
                "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 DATASET_DICT = {
     "voc2012": DataSetSetting(dataset_type="voc2012", size=(512, 512), n_classes=20, label_names=voc_classes,
-                              dataset_build_func=lambda root_dir, train_transforms, test_transforms, class_index_dict,
-                                                        size:
-                              build_voc_dataset("2012", root_dir, train_transforms, test_transforms, class_index_dict,
-                                                size)),
+                              dataset_build_func=lambda root_dir, train_transforms, test_transforms, class_index_dict:
+                              build_voc_dataset("2012", root_dir, train_transforms, test_transforms)),
     "voc2007": DataSetSetting(dataset_type="voc2007", size=(512, 512), n_classes=20, label_names=voc_classes,
-                              dataset_build_func=lambda root_dir, train_transforms, test_transforms, class_index_dict,
-                                                        size:
-                              build_voc_dataset("2007", root_dir, train_transforms, test_transforms, class_index_dict,
-                                                size)),
+                              dataset_build_func=lambda root_dir, train_transforms, test_transforms, class_index_dict:
+                              build_voc_dataset("2007", root_dir, train_transforms, test_transforms)),
 }
 MODEL_DICT = {
     "efficientdet": build_efficientdet,
@@ -59,13 +53,23 @@ MODEL_DICT = {
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
-    train_transforms = Compose([Resize(setting.size), ToTensor()])
-    test_transforms = Compose([Resize(setting.size), ToTensor()])
     class_index_dict = {}
     for i, label_name in enumerate(setting.label_names):
         class_index_dict[label_name] = i
+
+    train_transforms = AlbumentationsDetectionWrapperTransform([
+        A.HorizontalFlip(),
+        A.Rotate((-90, 90)),
+        A.RandomResizedCrop(setting.size[0], setting.size[1]),
+        ToTensorV2(),
+    ], annotation_transform=VOCAnnotationTransform(class_index_dict))
+    test_transforms = AlbumentationsDetectionWrapperTransform([
+        A.Resize(setting.size[0], setting.size[1]),
+        ToTensorV2(),
+    ], annotation_transform=VOCAnnotationTransform(class_index_dict))
+
     train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms,
-                                                             class_index_dict, setting.size)
+                                                             class_index_dict)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                       collate_fn=AdjustDetectionTensorCollator()), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=True,

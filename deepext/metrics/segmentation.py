@@ -49,7 +49,7 @@ class SegmentationAccuracyByClasses(BaseMetrics):
         avg_acc = 0.0
         for i, label_name in enumerate(self.label_names):
             correct, incorrect = self.correct_by_classes[i], self.incorrect_by_classes[i]
-            result[label_name] = correct / (correct + incorrect)
+            result[label_name] = correct / (correct + incorrect) if correct + incorrect > 0 else 0
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
@@ -107,14 +107,14 @@ class SegmentationIoUByClasses(BaseMetrics):
         avg_iou = 0.0
         for i, label_name in enumerate(self.label_names):
             overlap, union = self.overlap_by_classes[i], self.union_by_classes[i]
-            result[label_name] = overlap / union
+            result[label_name] = overlap / union if union > 0 else 0
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
         result[MetricKey.KEY_AVERAGE.value] = avg_iou / len(self.label_names)
         result[MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_iou - result[MetricKey.KEY_BACKGROUND.value]) / (
                 len(self.label_names) - 1)
-        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union
+        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union if total_union > 0 else 0
         if self._val_key:
             return result[self._val_key.value]
         return list(result.items())

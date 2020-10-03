@@ -51,5 +51,5 @@ class VisualizeRandomObjectDetectionResult:
             return image
         for bbox in teacher_bboxes:
             image = draw_bounding_boxes_with_name_tag(image, [bbox], color=self._teacher_color,
-                                                      text=self._label_names[bbox[-1]])
+                                                      text=self._label_names[int(bbox[-1])])
         return image

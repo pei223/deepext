@@ -1,7 +1,8 @@
 import argparse
-from torchvision.transforms import Resize, RandomResizedCrop, RandomHorizontalFlip, ColorJitter, RandomRotation
 import torchvision
 from torch.utils.data import DataLoader, Dataset
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 
 from deepext.layers.loss import FocalLoss
 from deepext.layers.subnetwork import BackBoneKey
@@ -10,7 +11,7 @@ from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, Custom
     ShallowShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, GenerateSegmentationImageCallback
-from deepext.data.transforms import ImageToOneHot, PilToTensor, LabelAndDataTransforms
+from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
 from deepext.metrics.segmentation import *
 from deepext.utils import *
 
@@ -97,21 +98,18 @@ MODEL_DICT = {
 
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
-    train_transforms = LabelAndDataTransforms([
-        (RandomHorizontalFlip(), RandomHorizontalFlip()),
-        (RandomRotation((-10, 10)), RandomRotation((-10, 10))),
-        (ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), None),
-        (RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0)),
-         RandomResizedCrop(size=dataset_setting.size, scale=(0.5, 2.0))),
-        (ToTensor(), PilToTensor()),
-        # (RandomErasing(), RandomErasing()),
-        (None, ImageToOneHot(setting.n_classes)),
+    train_transforms = A.Compose([
+        A.HorizontalFlip(),
+        A.Rotate((-90, 90)),
+        A.RandomResizedCrop(dataset_setting.size[0], dataset_setting.size[1], scale=(0.5, 2.0)),
+        ToTensorV2(),
     ])
-    test_transforms = LabelAndDataTransforms([
-        (Resize(setting.size), Resize(setting.size)),
-        (ToTensor(), PilToTensor()),
-        (None, ImageToOneHot(setting.n_classes))
+    train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=dataset_setting.n_classes)
+    test_transforms = A.Compose([
+        A.Resize(dataset_setting.size[0], dataset_setting.size[1]),
+        ToTensorV2(),
     ])
+    test_transforms = AlbumentationsSegmentationWrapperTransform(test_transforms, class_num=dataset_setting.n_classes)
 
     train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
