@@ -104,12 +104,14 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
         A.RandomResizedCrop(dataset_setting.size[0], dataset_setting.size[1], scale=(0.5, 2.0)),
         ToTensorV2(),
     ])
-    train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=dataset_setting.n_classes)
+    train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=dataset_setting.n_classes,
+                                                                  ignore_indices=[255, ])
     test_transforms = A.Compose([
         A.Resize(dataset_setting.size[0], dataset_setting.size[1]),
         ToTensorV2(),
     ])
-    test_transforms = AlbumentationsSegmentationWrapperTransform(test_transforms, class_num=dataset_setting.n_classes)
+    test_transforms = AlbumentationsSegmentationWrapperTransform(test_transforms, class_num=dataset_setting.n_classes,
+                                                                 ignore_indices=[255, ])
 
     train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \

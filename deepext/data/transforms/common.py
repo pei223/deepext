@@ -7,12 +7,15 @@ from PIL import Image
 
 
 class ImageToOneHot:
-    def __init__(self, class_num: int):
+    def __init__(self, class_num: int, ignore_index: int = None):
         self._class_num = class_num
+        self._ignore_index = ignore_index
 
     def __call__(self, img: torch.Tensor):
         assert img.ndim == 3
         img = img.permute(1, 2, 0).long()
+        if self._ignore_index:
+            img[img == self._ignore_index] = 0
         img = torch.eye(self._class_num)[img]
         return img.view(img.shape[0], img.shape[1], img.shape[3]).permute(2, 0, 1)
 

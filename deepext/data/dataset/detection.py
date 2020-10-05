@@ -43,9 +43,10 @@ class VOCAnnotationTransform:
     """
     points = ["xmin", "ymin", "xmax", "ymax"]
 
-    def __init__(self, class_index_dict: Dict, size: Tuple[int, int] = None):
+    def __init__(self, class_index_dict: Dict, size: Tuple[int, int] = None, ignore_labels: List[str] = None):
         self._size = size
         self._class_index_dict = class_index_dict
+        self._ignore_labels = ignore_labels or []
 
     def __call__(self, target: ET.Element or Dict):
         assert isinstance(target, ET.Element) or isinstance(target, dict)
@@ -70,7 +71,7 @@ class VOCAnnotationTransform:
                 coordinate = coordinate * adjust_width_rate if i % 2 == 0 else coordinate * adjust_height_rate
                 bbox.append(coordinate)
             class_index = self._class_index_dict.get(class_name)
-            if class_index is None:  # Except not exist class.
+            if class_index is None or class_name in self._ignore_labels:  # Except not exist class.
                 continue
             result.append(bbox + [class_index, ])
         return result
