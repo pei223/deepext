@@ -11,7 +11,7 @@ __all__ = ['EfficientDetector']
 
 
 class EfficientDetector(DetectionModel):
-    def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.2, max_detections=100,
+    def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.5, max_detections=100,
                  backbone_path: str = None):
         super().__init__()
         self._model = try_cuda(EfficientDet(num_classes=num_classes,

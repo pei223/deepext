@@ -6,7 +6,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 from deepext.models.base import DetectionModel, BaseModel
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
-from deepext.models.object_detection import EfficientDetector, M2Det
+from deepext.models.object_detection import EfficientDetector, M2Det, SSD
 from deepext.trainer import Trainer, LearningCurveVisualizer
 from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.metrics.object_detection import *
@@ -25,6 +25,10 @@ def build_efficientdet(dataset_setting, args):
 
 def build_m2det(dataset_setting, args):
     return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
+
+
+def build_ssd(dataset_setting, args):
+    return SSD(num_classes=dataset_setting.n_classes, input_size=args.image_size, lr=args.lr)
 
 
 def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
@@ -48,6 +52,7 @@ DATASET_DICT = {
 MODEL_DICT = {
     "efficientdet": build_efficientdet,
     "m2det": build_m2det,
+    "ssd": build_ssd,
 }
 
 
@@ -109,7 +114,7 @@ if __name__ == "__main__":
         model.load_weight(args.load_weight_path)
 
     # Training setting.
-    lr_scheduler = LearningRateScheduler(args.epoch)
+    # lr_scheduler = LearningRateScheduler(args.epoch)
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
@@ -122,5 +127,5 @@ if __name__ == "__main__":
                                                         save_filepath="detection_learning_curve.png")
     # Training.
     Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader, epochs=args.epoch,
-                       callbacks=callbacks, lr_scheduler_func=lr_scheduler, metric_ls=metric_ls,
+                       callbacks=callbacks,metric_ls=metric_ls,
                        calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)

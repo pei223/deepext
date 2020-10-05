@@ -2,62 +2,68 @@ import torch
 import torch.optim as optim
 import numpy as np
 
-from ....models.base.base_model import BaseModel
+from ....models.base.detection_model import DetectionModel
 from .ssd_lib.ssd import build_ssd
 from .ssd_lib.layers.modules.multibox_loss import MultiBoxLoss
 from ....utils.tensor_util import try_cuda
 
 
-class SSD(BaseModel):
-    def __init__(self, num_classes, input_size=512, lr=1e-4):
+class SSD(DetectionModel):
+    def __init__(self, num_classes, input_size=300, lr=1e-4, threshold=0.5, max_detection=100):
         super().__init__()
-        self._model = build_ssd(size=input_size, num_classes=num_classes, phase="train")
+        self._model: torch.nn.Module = build_ssd(size=input_size, num_classes=num_classes, phase="train")
 
         self._optimizer = optim.SGD(self._model.parameters(), lr=lr, momentum=0.9,
                                     weight_decay=5e-4)
         self._criterion = MultiBoxLoss(num_classes, 0.5, True, 0, True, 3, 0.5,
                                        False, torch.cuda.is_available())
+        self._model = try_cuda(self._model)
+        self._input_size = input_size
+        self._score_threshold = threshold
+        self._max_detection = max_detection
 
     def train_batch(self, inputs: torch.Tensor, teachers: torch.Tensor):
         self._model.train()
         self._model.phase = "train"
+        self._optimizer.zero_grad()
 
         images = torch.Tensor(inputs).cuda().float()
         annotations = torch.Tensor(teachers).cuda()
 
         out = self._model(images)
-        print(out[0].shape, out[1].shape, annotations.shape)
-        self._optimizer.zero_grad()
         loss_l, loss_c = self._criterion(out, annotations)
         loss = loss_l + loss_c
         loss.backward()
         self._optimizer.step()
-        print(loss.item())
         return float(loss)
 
     def predict(self, inputs: torch.Tensor) -> np.ndarray:
         self._model.eval()
         self._model.phase = "test"
 
-        scores = []
-        boxes = []
-        labels = []
         with torch.no_grad():
-            for i in range(inputs.shape[0]):
-                image = try_cuda(inputs[0]).float().unsqueeze(0)
-                result = self._model(image)
-                print(result[0].shape, result[1].shape, result[2].shape)
-                detections = result.data
-                scale = torch.Tensor([image.shape[1], image.shape[0],
-                                      image.shape[1], image.shape[0]])
-                for i in range(detections.size(1)):
-                    j = 0
-                    while detections[0, i, j, 0] >= 0.6:
-                        score = detections[0, i, j, 0]
-                        pt = (detections[0, i, j, 1:] * scale).cpu().numpy()
-                        coords = (pt[0], pt[1], pt[2], pt[3])
+            inputs = try_cuda(inputs.float())
+            y = self._model(inputs)
+            locs, scores, _ = y
 
-                        j += 1
+            result = []
+            for i in range(inputs.shape[0]):
+                loc, score = locs[i], scores[i]
+                score = score.cpu().numpy()
+                loc = (loc * self._input_size).cpu().numpy()
+                valid_indices = np.where(score > self._score_threshold)
+                valid_indices = valid_indices[0]
+                if valid_indices.shape[0] <= 0:
+                    result.append([])
+                    continue
+                score, loc = score[valid_indices], loc[valid_indices]
+                sorted_scores_idx = np.argsort(-score.max(axis=-1), axis=-1)[:self._max_detection]
+
+                score = np.argmax(score[sorted_scores_idx], axis=-1)
+                loc = loc[sorted_scores_idx]
+                result.append(np.concatenate([loc, score.reshape([score.shape[0], 1])], axis=-1))
+        result = np.array(result)
+        return result
 
     def save_weight(self, save_path):
         torch.save(self._model.state_dict(), save_path)
