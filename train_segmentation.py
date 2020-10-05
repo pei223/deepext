@@ -102,6 +102,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
         A.HorizontalFlip(),
         A.Rotate((-90, 90)),
         A.RandomResizedCrop(dataset_setting.size[0], dataset_setting.size[1], scale=(0.5, 2.0)),
+        A.CoarseDropout(max_height=setting.size[1] / 5, max_width=setting.size[0] / 5),
         ToTensorV2(),
     ])
     train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=dataset_setting.n_classes,
