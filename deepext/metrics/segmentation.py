@@ -94,10 +94,10 @@ class SegmentationIoUByClasses(BaseMetrics):
         for batch_i in range(pred.shape[0]):
             one_pred, one_teacher = pred[batch_i], teacher[batch_i]
             for label in range(len(self.label_names)):
-                label_teacher, label_pred = (one_teacher == label), (one_pred == label)
-                label_result_flags = (one_teacher[label_teacher] == one_pred[label_teacher])
-                overlap = np.count_nonzero(label_result_flags)
-                union = np.count_nonzero(label_teacher) + np.count_nonzero(label_pred) - overlap
+                teacher_indices, pred_indices = (one_teacher == label), (one_pred == label)
+                overlap_indices = teacher_indices & pred_indices
+                overlap = np.count_nonzero(overlap_indices)
+                union = np.count_nonzero(teacher_indices) + np.count_nonzero(pred_indices) - overlap
                 self.overlap_by_classes[label] += overlap
                 self.union_by_classes[label] += union
 
@@ -123,4 +123,88 @@ class SegmentationIoUByClasses(BaseMetrics):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
 
-# TODO Recall/Precision/F Score
+
+class SegmentationRecallPrecision(BaseMetrics):
+    def __init__(self, label_names: List[str], main_val_key: MetricKey = None, sub_val_key: MetricKey = None):
+        self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
+        self.tp_by_classes = [0 for _ in range(len(self.label_names))]
+        self.tp_fp_by_classes = [0 for _ in range(len(self.label_names))]
+        self.tp_fn_by_classes = [0 for _ in range(len(self.label_names))]
+        self._main_val_key = main_val_key
+        self._sub_val_key = sub_val_key
+        assert self._main_val_key is None or self._main_val_key in [MetricKey.KEY_RECALL, MetricKey.KEY_PRECISION,
+                                                                    MetricKey.KEY_F_SCORE]
+        assert self._sub_val_key is None or self._sub_val_key in [MetricKey.KEY_AVERAGE, MetricKey.KEY_TOTAL]
+
+    def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
+        """
+        :param pred: (Batch size, classes, height, width)
+        :param teacher: (Batch size, classes, height, width)
+        """
+        pred = torch.from_numpy(pred)
+        if isinstance(teacher, torch.Tensor):
+            teacher = teacher.cpu().numpy()
+        if isinstance(pred, torch.Tensor):
+            pred = pred.cpu().numpy()
+        assert pred.ndim == 4 and teacher.ndim == 4
+        assert pred.shape[-1] == teacher.shape[-1] and pred.shape[-2] == teacher.shape[-2], "教師データと推論結果のサイズは同じにしてください"
+
+        pred = pred.argmax(1).reshape([pred.shape[0], -1])
+        teacher = teacher.argmax(1).reshape(teacher.shape[0], -1)
+        # NOTE バッチまとめて計算するとメモリが大きくなりnumpy演算が正常にできないため、1データごとに処理
+        for batch_i in range(pred.shape[0]):
+            one_pred, one_teacher = pred[batch_i], teacher[batch_i]
+            for label in range(len(self.label_names)):
+                teacher_indices, pred_indices = (one_teacher == label), (one_pred == label)
+                tp = np.count_nonzero(teacher_indices & pred_indices)
+                tp_fp = np.count_nonzero(pred_indices)
+                tp_fn = np.count_nonzero(teacher_indices)
+                self.tp_by_classes[label] += tp
+                self.tp_fp_by_classes[label] += tp_fp
+                self.tp_fn_by_classes[label] += tp_fn
+
+    def calc_summary(self) -> any:
+        recall_dict, precision_dict, f_score_dict = OrderedDict(), OrderedDict(), OrderedDict()
+        total_tp, total_tp_fp, total_tp_fn = 0, 0, 0
+        for i, label_name in enumerate(self.label_names):
+            tp, tp_fp, tp_fn = self.tp_by_classes[i], self.tp_fp_by_classes[i], self.tp_fn_by_classes[i]
+            recall = tp / tp_fn if tp_fn > 0 else 0
+            precision = tp / tp_fp if tp_fp > 0 else 0
+            f_score = (2 * recall * precision) / (recall + precision) if recall + precision > 0 else 0
+
+            recall_dict[label_name] = recall
+            precision_dict[label_name] = precision
+            f_score_dict[label_name] = f_score
+
+            total_tp += tp
+            total_tp_fp += tp_fp
+            total_tp_fn += tp_fn
+
+        recall_dict[MetricKey.KEY_AVERAGE.value] = sum(recall_dict.values()) / len(self.label_names)
+        precision_dict[MetricKey.KEY_AVERAGE.value] = sum(precision_dict.values()) / len(self.label_names)
+        f_score_dict[MetricKey.KEY_AVERAGE.value] = sum(f_score_dict.values()) / len(self.label_names)
+
+        total_recall = total_tp / (total_tp_fn) if total_tp_fn > 0 else 0
+        total_precision = total_tp / (total_tp_fp) if total_tp_fp > 0 else 0
+        total_f_score = (2 * total_recall * total_precision) / (
+                total_recall + total_precision) if total_recall + total_precision > 0 else 0
+
+        recall_dict[MetricKey.KEY_TOTAL.value] = total_recall
+        precision_dict[MetricKey.KEY_TOTAL.value] = total_precision
+        f_score_dict[MetricKey.KEY_TOTAL.value] = total_f_score
+
+        result = {
+            MetricKey.KEY_RECALL.value: recall_dict,
+            MetricKey.KEY_PRECISION.value: precision_dict,
+            MetricKey.KEY_F_SCORE.value: f_score_dict
+        }
+        if self._main_val_key:
+            if self._sub_val_key:
+                return result[self._main_val_key.value][self._sub_val_key.value]
+            return result[self._main_val_key.value.value]
+        return result
+
+    def clear(self):
+        self.tp_by_classes = [0 for _ in range(len(self.label_names))]
+        self.tp_fp_by_classes = [0 for _ in range(len(self.label_names))]
+        self.tp_fn_by_classes = [0 for _ in range(len(self.label_names))]

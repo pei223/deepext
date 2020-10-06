@@ -129,8 +129,13 @@ class AdaptiveCrossEntropyLoss(nn.Module):
         assert False, f"Invalid pred or teacher type,  {pred.shape} and {teacher.shape}"
 
 
-class FocalLoss(nn.Module):
+class SegmentationFocalLoss(nn.Module):
     def __init__(self, gamma=2, weights: List[float] = None, logits=True):
+        """
+        :param gamma:
+        :param weights: weights by classes
+        :param logits:
+        """
         super().__init__()
         self.gamma = gamma
         self.class_weight_tensor = try_cuda(torch.tensor(weights).view(-1, 1, 1)) if weights else None
@@ -146,6 +151,30 @@ class FocalLoss(nn.Module):
                                                                   self.class_weight_tensor.shape[0],
                                                                   self.class_weight_tensor.shape[1],
                                                                   self.class_weight_tensor.shape[2])
+            focal_loss = (1. - pt) ** self.gamma * (ce_loss * class_weight_tensor)
+        else:
+            ce_loss = F.cross_entropy(pred, teacher.argmax(1), reduce=False)
+            pt = torch.exp(-ce_loss)
+            focal_loss = (1. - pt) ** self.gamma * ce_loss
+        return torch.mean(focal_loss)
+
+
+class ClassificationFocalLoss(nn.Module):
+    # TODO
+    def __init__(self, gamma=2, weights: List[float] = None, logits=True):
+        super().__init__()
+        self.gamma = gamma
+        self.class_weight_tensor = try_cuda(torch.tensor(weights).view(-1, )) if weights else None
+        self.logits = logits
+        if not logits and weights is not None:
+            RuntimeWarning("重みを適用するにはlogitsをTrueにしてください.")
+
+    def forward(self, pred, teacher):
+        if self.logits:
+            ce_loss = F.binary_cross_entropy_with_logits(pred, teacher, reduce=False)
+            pt = torch.exp(-ce_loss)
+            class_weight_tensor = self.class_weight_tensor.expand(pred.shape[0],
+                                                                  self.class_weight_tensor.shape[0],)
             focal_loss = (1. - pt) ** self.gamma * (ce_loss * class_weight_tensor)
         else:
             ce_loss = F.cross_entropy(pred, teacher.argmax(1), reduce=False)

@@ -93,7 +93,7 @@ class VOCDataset(Dataset):
         self._voc_transform = VOCAnnotationTransform(class_index_dict=class_index_dict, size=None)
 
         if valid_suffixes is None:
-            valid_suffixes = ["*.png", "*.jpg", "*.jpeg", ]
+            valid_suffixes = ["*.png", "*.jpg", "*.jpeg", "*.bmp"]
         self.image_path_ls = []
         for suffix in valid_suffixes:
             self.image_path_ls += list(image_dir.glob(suffix))
@@ -101,12 +101,15 @@ class VOCDataset(Dataset):
         self.annotation_dir = Path(annotation_dir_path)
         self.image_path_ls.sort()
 
-    def __call__(self, idx: int):
+    def __getitem__(self, idx: int):
         image_path = self.image_path_ls[idx]
-        image = Image.open(str(image_path))
+        image = Image.open(str(image_path)).convert("RGB")
 
         annotation_path = self.annotation_dir.joinpath(f"{image_path.stem}.xml")
         annotation_node = ET.parse(str(annotation_path)).getroot()
         annotation = self._voc_transform(annotation_node)
 
         return self.transforms(image, annotation)
+
+    def __len__(self):
+        return len(self.image_path_ls)

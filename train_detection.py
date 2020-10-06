@@ -20,7 +20,7 @@ from util import DataSetSetting
 # NOTE モデル・データセットはここを追加
 def build_efficientdet(dataset_setting, args):
     return EfficientDetector(num_classes=dataset_setting.n_classes, lr=args.lr,
-                             network=f"efficientdet-d{args.efficientdet_scale}")
+                             network=f"efficientdet-d{args.efficientdet_scale}", score_threshold=0.2)
 
 
 def build_m2det(dataset_setting, args):
@@ -64,8 +64,10 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
     train_transforms = AlbumentationsDetectionWrapperTransform([
         A.HorizontalFlip(),
-        A.Rotate((-90, 90)),
+        A.Rotate((-30, 30)),
         A.RandomResizedCrop(setting.size[0], setting.size[1]),
+        A.CoarseDropout(max_width=100, max_height=100),
+        A.RandomBrightnessContrast(),
         ToTensorV2(),
     ], annotation_transform=VOCAnnotationTransform(class_index_dict))
     test_transforms = AlbumentationsDetectionWrapperTransform([
@@ -114,7 +116,7 @@ if __name__ == "__main__":
         model.load_weight(args.load_weight_path)
 
     # Training setting.
-    # lr_scheduler = LearningRateScheduler(args.epoch)
+    lr_scheduler = LearningRateScheduler(args.epoch, power=0.9)
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
@@ -127,5 +129,5 @@ if __name__ == "__main__":
                                                         save_filepath="detection_learning_curve.png")
     # Training.
     Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader, epochs=args.epoch,
-                       callbacks=callbacks,metric_ls=metric_ls,
+                       callbacks=callbacks, metric_ls=metric_ls,
                        calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)

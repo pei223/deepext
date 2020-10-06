@@ -35,8 +35,8 @@ class EfficientDetector(DetectionModel):
         self._model.freeze_bn()
         self._optimizer.zero_grad()
 
-        images = try_cuda(torch.Tensor(inputs)).float()
-        annotations = try_cuda(torch.Tensor(teachers))
+        images = try_cuda(inputs)
+        annotations = try_cuda(teachers)
         classification_loss, regression_loss = self._model([images, annotations])
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()

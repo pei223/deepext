@@ -16,7 +16,7 @@ class IndexImageDataset(Dataset):
         image_dir = Path(image_dir_path)
 
         if valid_suffixes is None:
-            valid_suffixes = ["*.png", "*.PNG", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG"]
+            valid_suffixes = ["*.png", "*.jpg", "*.jpeg", "*.bmp"]
         self.image_path_ls = []
         for suffix in valid_suffixes:
             self.image_path_ls += list(image_dir.glob(suffix))
@@ -26,6 +26,6 @@ class IndexImageDataset(Dataset):
     def __call__(self, idx: int):
         image_path = self.image_path_ls[idx]
         index_image_path = self.index_image_dir.joinpath(f"{image_path.stem}.png")
-        image = Image.open(str(image_path))
+        image = Image.open(str(image_path)).convert("RGB")
         index_image = Image.open(str(index_image_path))
         return self.transforms(image, index_image)

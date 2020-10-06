@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, Dataset
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from deepext.layers.loss import FocalLoss
+from deepext.layers.loss import SegmentationFocalLoss
 from deepext.layers.subnetwork import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, \
@@ -17,7 +17,7 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
-voc_focal_loss = FocalLoss(weights=[0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ])
+voc_focal_loss = SegmentationFocalLoss(weights=[0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ])
 
 
 def build_pspnet(dataset_setting, args):
@@ -100,9 +100,10 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = A.Compose([
         A.HorizontalFlip(),
-        A.Rotate((-90, 90)),
+        A.Rotate((-30, 30)),
         A.RandomResizedCrop(dataset_setting.size[0], dataset_setting.size[1], scale=(0.5, 2.0)),
-        A.CoarseDropout(max_height=setting.size[1] / 5, max_width=setting.size[0] / 5),
+        A.CoarseDropout(max_height=int(setting.size[1] / 5), max_width=int(setting.size[0] / 5)),
+        A.RandomBrightnessContrast(),
         ToTensorV2(),
     ])
     train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=dataset_setting.n_classes,
@@ -156,8 +157,8 @@ if __name__ == "__main__":
     if args.progress_dir:
         callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=1, model=model,
                                                            dataset=test_dataset))
-    metric_ls = [SegmentationAccuracyByClasses(dataset_setting.label_names),
-                 SegmentationIoUByClasses(dataset_setting.label_names)]
+    metric_ls = [SegmentationIoUByClasses(dataset_setting.label_names),
+                 SegmentationRecallPrecision(dataset_setting.label_names)]
     metric_for_graph = SegmentationIoUByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
                                                         metric_for_graph=metric_for_graph,

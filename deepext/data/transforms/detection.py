@@ -20,8 +20,8 @@ class AlbumentationsDetectionWrapperTransform:
             image = np.array(image)
         if not isinstance(teacher, np.ndarray):
             teacher = np.array(teacher)
-        bboxes = teacher[:, :4]
-        labels = teacher[:, 4]
+        bboxes = teacher[:, :4] if teacher.shape[0] > 0 else []
+        labels = teacher[:, 4] if teacher.shape[0] > 0 else []
         result_dict = self._albumentations_transforms(image=image, bboxes=bboxes, category_ids=labels)
         image = result_dict["image"]
         bboxes = result_dict["bboxes"]
