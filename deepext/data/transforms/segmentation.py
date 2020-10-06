@@ -1,4 +1,5 @@
 from typing import List
+import cv2
 import numpy as np
 from PIL import Image
 import albumentations as A
@@ -17,6 +18,7 @@ class AlbumentationsSegmentationWrapperTransform:
     def __call__(self, image: Image.Image or np.ndarray, teacher: Image.Image or np.ndarray):
         if not isinstance(image, np.ndarray):
             image = np.array(image)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         if not isinstance(teacher, np.ndarray):
             teacher = np.array(teacher)
         for ignore_index in self._ignore_indices:

@@ -67,7 +67,7 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     train_transforms = A.Compose([
         A.HorizontalFlip(),
         A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
-        A.Rotate((-90, 90)),
+        A.Rotate((-30, 30)),
         ToTensorV2(),
     ])
     train_transforms = AlbumentationsImageWrapperTransform(train_transforms)

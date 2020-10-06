@@ -1,3 +1,4 @@
+import cv2
 from typing import List
 import numpy as np
 from PIL import Image
@@ -18,6 +19,7 @@ class AlbumentationsDetectionWrapperTransform:
             teacher = self._annotation_transform(teacher)
         if not isinstance(image, np.ndarray):
             image = np.array(image)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         if not isinstance(teacher, np.ndarray):
             teacher = np.array(teacher)
         bboxes = teacher[:, :4] if teacher.shape[0] > 0 else []

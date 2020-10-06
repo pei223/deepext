@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import albumentations as A
+import cv2
 
 
 class AlbumentationsImageWrapperTransform:
@@ -11,6 +12,7 @@ class AlbumentationsImageWrapperTransform:
     def __call__(self, image: Image.Image or np.ndarray):
         if not isinstance(image, np.ndarray):
             image = np.array(image)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         result_dict = self._albumentations_transforms(image=image)
         result_image = result_dict["image"]
