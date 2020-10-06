@@ -36,11 +36,11 @@ class EfficientDetector(DetectionModel):
         self._optimizer.zero_grad()
 
         images = try_cuda(inputs)
-        annotations = try_cuda(teachers)
+        annotations = torch.tensor(teachers) if not isinstance(teachers, torch.Tensor) else teachers
+        annotations = try_cuda(annotations.float())
         classification_loss, regression_loss = self._model([images, annotations])
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()
-        # print(classification_loss.item(), regression_loss.item())
         loss = classification_loss + regression_loss
         if bool(loss == 0):
             return 0.0

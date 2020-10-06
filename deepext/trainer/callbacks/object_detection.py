@@ -36,8 +36,7 @@ class VisualizeRandomObjectDetectionResult:
         random_image_index = np.random.randint(0, data_len)
         image, teacher_bboxes = self._dataset[random_image_index]
         assert isinstance(image, torch.Tensor), "Expected image type is Tensor."
-        result_img = self._model.calc_detection_image(image, img_size_for_model=(image.shape[-2], image.shape[-1]),
-                                                      label_names=self._label_names)[1]
+        result_img = self._model.calc_detection_image(image, label_names=self._label_names)[1]
         image = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
         cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)
 

@@ -1,5 +1,5 @@
 from typing import Tuple, List
-
+import cv2
 import numpy as np
 from .realtime_prediction import RealtimePrediction
 from ..models.base import DetectionModel
@@ -12,5 +12,7 @@ class RealtimeDetection(RealtimePrediction):
         self.label_names = label_names
 
     def calc_result(self, frame: np.ndarray):
-        return self.model.calc_segmentation_image(frame, img_size_for_model=self.img_size_for_model,
-                                                  label_names=self.label_names)[1]
+        origin_frame_size = frame.shape[:2]
+        frame = cv2.resize(frame, self.img_size_for_model)
+        return self.model.calc_detection_image(frame, origin_img_size=origin_frame_size, label_names=self.label_names,
+                                               require_normalize=True)[1]

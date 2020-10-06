@@ -11,8 +11,8 @@ class SegmentationModel(BaseModel):
     def calc_segmentation_image(self, img: torch.Tensor or np.ndarray, alpha=0.7, require_normalize=False) -> Tuple[
         np.ndarray, np.ndarray]:
         """
-        :param require_normalize:
         :param img: Numpy array or torch.Tensor image.
+        :param require_normalize:
         :param alpha:
         :return: result array(width, height, classes), blended image array(width, height, 3(RGB))
         """

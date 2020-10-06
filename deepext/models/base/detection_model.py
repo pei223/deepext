@@ -10,28 +10,46 @@ from ...utils.image_utils import *
 
 
 class DetectionModel(BaseModel):
-    def calc_detection_image(self, img: Image.Image or torch.Tensor or np.ndarray,
-                             img_size_for_model: Tuple[int, int], label_names: List[str],
-                             pred_color=(0, 0, 255)) -> Tuple[np.ndarray, np.ndarray]:
+    def calc_detection_image(self, img: torch.Tensor or np.ndarray, label_names: List[str],
+                             origin_img_size: Tuple[int, int] = None, require_normalize=False,
+                             pred_bbox_color=(0, 0, 255)) -> \
+            Tuple[np.ndarray, np.ndarray]:
         """
-        :param img:
-        :param img_size_for_model: Height, Width
-        :return: Object detection result, blended image.
+        :param img: Numpy array or torch.Tensor image.
+        :param label_names:
+        :param origin_img_size:
+        :param require_normalize:
+        :param pred_bbox_color:
+        :return: Object detection result(bounding box num, 5(x_min, y_min, x_max, y_max, label)), blended image.
         """
-        origin_img_size = get_image_size(img)
-        img_tensor = img_to_tensor(resize_image(img, img_size_for_model))
-        if img_tensor.ndim == 3:
-            img_tensor = img_tensor.view(-1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2])
+        assert img.ndim == 3, f"Invalid data shape: {img.shape}. Expected 3 dimension"
+        if isinstance(img, np.ndarray):
+            img_tensor = torch.tensor(img.transpose(2, 0, 1))
+            origin_img = img
+        elif isinstance(img, torch.Tensor):
+            img_tensor = img
+            origin_img = img.cpu().numpy().transpose(1, 2, 0)
+        else:
+            assert False, f"Invalid data type: {type(img)}"
+
+        if require_normalize:
+            img_tensor = img_tensor.float() / 255.
+        else:
+            origin_img = (origin_img * 255).astype('uint8')
+
         img_tensor = try_cuda(img_tensor)
+        img_tensor = img_tensor.view(-1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2])
+        model_img_size = (img_tensor.shape[-2], img_tensor.shape[-1])
 
         try:
             result = self.predict(img_tensor)[0]
         except TypeError:
-            # print("Bounding box is nothing.")
             result = None
-        result = self._scale_bboxes(result, img_size_for_model, origin_img_size)
-        img = img_to_cv2(img)
-        return result, self._draw_result_bboxes(img, bboxes=result, label_names=label_names, pred_color=pred_color)
+        if origin_img_size:
+            origin_img = cv2.resize(origin_img, origin_img_size)
+            result = self._scale_bboxes(result, model_img_size, origin_img_size)
+        return result, self._draw_result_bboxes(origin_img, bboxes=result, label_names=label_names,
+                                                pred_color=pred_bbox_color)
 
     def _scale_bboxes(self, bboxes: Union[np.ndarray, List[List[float or int]]], origin_size: Tuple[int, int],
                       to_size: Tuple[int, int]) -> Union[np.ndarray, List[List[float or int]]]:
