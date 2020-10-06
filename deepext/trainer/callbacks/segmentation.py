@@ -1,9 +1,7 @@
-from typing import List
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
 from ...models.base import SegmentationModel
-from ...utils import try_cuda, image_utils
 
 
 class GenerateSegmentationImageCallback:
@@ -20,8 +18,5 @@ class GenerateSegmentationImageCallback:
         data_len = len(self._dataset)
         random_image_index = np.random.randint(0, data_len)
         img_tensor, _ = self._dataset[random_image_index]
-        img_tensor = try_cuda(img_tensor)
-
-        _, result_img = self._model.calc_segmentation_image(img_tensor, img_size_for_model=img_tensor.shape[1:],
-                                                            alpha=self._alpha)
+        _, result_img = self._model.calc_segmentation_image(img_tensor, alpha=self._alpha)
         Image.fromarray(result_img).save(f"{self._output_dir}/result_image{epoch + 1}.png")
