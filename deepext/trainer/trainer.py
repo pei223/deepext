@@ -64,6 +64,8 @@ class Trainer:
         for train_x, teacher in data_loader:
             train_x = try_cuda(train_x)
             teacher = try_cuda(teacher)
+            if train_x.shape[0] == 1:  # Batch normalizationが動かなくなるため
+                continue
             loss = self._model.train_batch(train_x, teacher)
             loss_list.append(loss)
         return mean(loss_list)

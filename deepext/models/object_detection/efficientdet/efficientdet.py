@@ -21,7 +21,7 @@ class EfficientDetector(DetectionModel):
                                             D_class=EFFICIENTDET[network]['D_class'], backbone_path=backbone_path))
         self._num_classes = num_classes
         self._network = network
-        self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
+        self._optimizer = optim.Adam(self._model.parameters(), lr=lr, weight_decay=4e-5)
         self._score_threshold = score_threshold
         self._max_detections = max_detections
 
@@ -48,7 +48,6 @@ class EfficientDetector(DetectionModel):
         torch.nn.utils.clip_grad_norm_(self._model.parameters(), 0.1)
         self._optimizer.step()
         self._optimizer.zero_grad()
-        # self._scheduler.step(loss.item())
         return float(loss)
 
     def predict(self, inputs) -> np.ndarray:

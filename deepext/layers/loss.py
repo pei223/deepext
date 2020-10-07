@@ -6,14 +6,6 @@ from torch.nn import functional as F
 from ..utils import try_cuda
 
 
-class IoULoss(torch.nn.Module):
-    def init(self):
-        super(IoULoss, self).init()
-
-    def forward(self, pred: torch.Tensor, teacher: torch.Tensor):
-        return (1 - iou_pytorch(pred, teacher)).mean()
-
-
 class JaccardLoss(torch.nn.Module):
     def forward(self, pred: torch.Tensor, teacher: torch.Tensor, smooth=1.0):
         teacher = teacher.float()
@@ -28,13 +20,23 @@ class DiceLoss(torch.nn.Module):
         super(DiceLoss, self).__init__()
 
     def forward(self, pred: torch.Tensor, teacher: torch.Tensor, smooth=1.0):
-        teacher = teacher.float()
+        """
+        :param pred:
+        :param teacher:
+        :param smooth:
+        :return:
+        """
+        pred = F.normalize(pred - pred.min(), 1)
+        pred, teacher = teacher.float(), pred.float()
+
+        # batch size, classes, width and height
         intersection = (pred * teacher).sum((-1, -2))
         pred = pred.contiguous().view(pred.shape[0], pred.shape[1], -1)
         teacher = teacher.contiguous().view(teacher.shape[0], teacher.shape[1], -1)
         pred_sum = pred.sum((-1,))
         teacher_sum = teacher.sum((-1,))
-        return (1 - ((2. * intersection + smooth) / (pred_sum + teacher_sum + smooth))).mean((1,)).mean((0,))
+        dice_by_classes = (2. * intersection + smooth) / (pred_sum + teacher_sum + smooth)
+        return (1. - dice_by_classes).mean((-1,)).mean((-1,))
 
 
 class DiceLossWithAreaPenalty(torch.nn.Module):
@@ -52,21 +54,25 @@ class DiceLossWithAreaPenalty(torch.nn.Module):
         # print("pred", pred.sum(1, ))
 
         intersection = (pred * teacher.float()).sum((-1, -2))
+        # batch size, classes, width and height
         pred = pred.contiguous().view(pred.shape[0], pred.shape[1], -1)
         teacher = teacher.contiguous().view(teacher.shape[0], teacher.shape[1], -1)
 
         total_area = float(teacher.shape[-1])
         area_by_classes = teacher.long().sum(-1, )
-        weight_by_classes = (total_area - area_by_classes.float()) / total_area
+        # batch size, area by classes
+        weight_by_classes = area_by_classes.float() / total_area
         # print("weight by class", weight_by_classes)
 
-        pred_sum = pred.sum((-1,))
-        teacher_sum = teacher.long().sum((-1,))
         # Batch * Classes
-        dice_loss = 1. - ((2. * intersection + smooth) / (pred_sum + teacher_sum.float() + smooth))
-        dice_loss[dice_loss != dice_loss] = 1.
-        # print("dice loss", dice_loss)
-        weighted_dice_loss = (dice_loss * weight_by_classes).mean(-1, )  # Batch,
+        pred_sum_by_classes = pred.sum((-1,))
+        teacher_sum_by_classes = teacher.long().sum((-1,))
+        dice_by_classes = (2. * intersection + smooth) / (pred_sum_by_classes + teacher_sum_by_classes.float() + smooth)
+        dice_loss_by_classes = 1. - dice_by_classes
+        dice_loss_by_classes[dice_loss_by_classes != dice_loss_by_classes] = 1.  # nanを省く
+        # print("dice loss", dice_loss_by_classes)
+
+        weighted_dice_loss = (dice_loss_by_classes * weight_by_classes).sum(-1, )  # Batch,
         # print("weighted_dice", weighted_dice_loss)
 
         loss = weighted_dice_loss.mean(0, )
@@ -160,7 +166,6 @@ class SegmentationFocalLoss(nn.Module):
 
 
 class ClassificationFocalLoss(nn.Module):
-    # TODO
     def __init__(self, gamma=2, weights: List[float] = None, logits=True):
         super().__init__()
         self.gamma = gamma
@@ -174,7 +179,7 @@ class ClassificationFocalLoss(nn.Module):
             ce_loss = F.binary_cross_entropy_with_logits(pred, teacher, reduce=False)
             pt = torch.exp(-ce_loss)
             class_weight_tensor = self.class_weight_tensor.expand(pred.shape[0],
-                                                                  self.class_weight_tensor.shape[0],)
+                                                                  self.class_weight_tensor.shape[0], )
             focal_loss = (1. - pt) ** self.gamma * (ce_loss * class_weight_tensor)
         else:
             ce_loss = F.cross_entropy(pred, teacher.argmax(1), reduce=False)

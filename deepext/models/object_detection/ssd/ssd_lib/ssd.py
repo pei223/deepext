@@ -94,12 +94,19 @@ class SSD(nn.Module):
 
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
-        output = (
-            loc.view(loc.size(0), -1, 4),
-            conf.view(conf.size(0), -1, self.num_classes) if self.phase != "test" else self.softmax(
-                conf.view(conf.size(0), -1, self.num_classes)),
-            self.priors
-        )
+        if self.phase == "test":
+            output = self.detect(
+                loc.view(loc.size(0), -1, 4),                   # loc preds
+                self.softmax(conf.view(conf.size(0), -1,
+                             self.num_classes)),                # conf preds
+                self.priors.type(type(x.data))                  # default boxes
+            )
+        else:
+            output = (
+                loc.view(loc.size(0), -1, 4),
+                conf.view(conf.size(0), -1, self.num_classes),
+                self.priors
+            )
         return output
 
     def load_weights(self, base_file):
@@ -107,7 +114,7 @@ class SSD(nn.Module):
         if ext == '.pkl' or '.pth':
             print('Loading weights into state dict...')
             self.load_state_dict(torch.load(base_file,
-                                            map_location=lambda storage, loc: storage))
+                                 map_location=lambda storage, loc: storage))
             print('Finished!')
         else:
             print('Sorry only .pth and .pkl files supported.')
@@ -147,7 +154,7 @@ def add_extras(cfg, i, batch_norm=False):
         if in_channels != 'S':
             if v == 'S':
                 layers += [nn.Conv2d(in_channels, cfg[k + 1],
-                                     kernel_size=(1, 3)[flag], stride=2, padding=1)]
+                           kernel_size=(1, 3)[flag], stride=2, padding=1)]
             else:
                 layers += [nn.Conv2d(in_channels, v, kernel_size=(1, 3)[flag])]
             flag = not flag
@@ -163,7 +170,7 @@ def multibox(vgg, extra_layers, cfg, num_classes):
         loc_layers += [nn.Conv2d(vgg[v].out_channels,
                                  cfg[k] * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(vgg[v].out_channels,
-                                  cfg[k] * num_classes, kernel_size=3, padding=1)]
+                        cfg[k] * num_classes, kernel_size=3, padding=1)]
     for k, v in enumerate(extra_layers[1::2], 2):
         loc_layers += [nn.Conv2d(v.out_channels, cfg[k]
                                  * 4, kernel_size=3, padding=1)]

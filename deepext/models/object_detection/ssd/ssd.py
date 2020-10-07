@@ -32,7 +32,7 @@ class SSD(DetectionModel):
 
         out = self._model(images)
         loss_l, loss_c = self._criterion(out, annotations)
-        loss = loss_l + loss_c
+        loss = loss_l.mean() + loss_c.mean()
         loss.backward()
         self._optimizer.step()
         return float(loss)
@@ -40,30 +40,21 @@ class SSD(DetectionModel):
     def predict(self, inputs: torch.Tensor) -> np.ndarray:
         self._model.eval()
         self._model.phase = "test"
-
+        batch_result = []
         with torch.no_grad():
             inputs = try_cuda(inputs.float())
             y = self._model(inputs)
-            locs, scores, _ = y
-
-            result = []
-            for i in range(inputs.shape[0]):
-                loc, score = locs[i], scores[i]
-                score = score.cpu().numpy()
-                loc = (loc * self._input_size).cpu().numpy()
-                valid_indices = np.where(score > self._score_threshold)
-                valid_indices = valid_indices[0]
-                if valid_indices.shape[0] <= 0:
-                    result.append([])
-                    continue
-                score, loc = score[valid_indices], loc[valid_indices]
-                sorted_scores_idx = np.argsort(-score.max(axis=-1), axis=-1)[:self._max_detection]
-
-                score = np.argmax(score[sorted_scores_idx], axis=-1)
-                loc = loc[sorted_scores_idx]
-                result.append(np.concatenate([loc, score.reshape([score.shape[0], 1])], axis=-1))
-        result = np.array(result)
-        return result
+            for batch_idx in range(inputs.shape[0]):
+                result = []
+                for label in range(inputs.shape[1]):
+                    for k in range(inputs.shape[2]):
+                        score = y[batch_idx, label, k, 0]
+                        if score < self._score_threshold:
+                            break
+                        points = (y[batch_idx, label, k, 1:] * self._input_size).cpu().numpy()
+                        result.append(np.concatenate([points, np.array([label - 1, ])]))
+                batch_result.append(result)
+        return np.array(batch_result)
 
     def save_weight(self, save_path):
         torch.save(self._model.state_dict(), save_path)
