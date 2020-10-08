@@ -9,8 +9,8 @@ from deepext.layers.subnetwork import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, \
     ShallowShelfNet
-from deepext.trainer import Trainer, LearningCurveVisualizer
-from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, GenerateSegmentationImageCallback
+from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler
+from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
 from deepext.metrics.segmentation import *
 from deepext.utils import *

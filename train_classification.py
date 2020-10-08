@@ -8,8 +8,8 @@ from deepext.models.base import BaseModel
 from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, \
     ResNetAttentionBranchNetwork
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
-from deepext.trainer import Trainer, LearningCurveVisualizer
-from deepext.trainer.callbacks import GenerateAttentionMapCallback, LearningRateScheduler, ModelCheckout
+from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler
+from deepext.trainer.callbacks import GenerateAttentionMapCallback, ModelCheckout
 from deepext.metrics.classification import *
 from deepext.metrics import MetricKey
 from deepext.utils import *

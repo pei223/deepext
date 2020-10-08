@@ -86,12 +86,12 @@ class DetectionIoUByClasses(BaseMetrics):
         avg_iou = 0.0
         for i, label_name in enumerate(self.label_names):
             overlap, union = self.overlap_by_classes[i], self.union_by_classes[i]
-            result[label_name] = overlap / union
+            result[label_name] = overlap / union if union > 0 else 0
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
         result[MetricKey.KEY_AVERAGE.value] = avg_iou / len(self.label_names)
-        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union
+        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union if total_union > 0 else 0
         if self._val_key:
             return result[self._val_key.value]
         return list(result.items())

@@ -7,8 +7,8 @@ from albumentations.pytorch.transforms import ToTensorV2
 from deepext.models.base import DetectionModel, BaseModel
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
 from deepext.models.object_detection import EfficientDetector, M2Det, SSD
-from deepext.trainer import Trainer, LearningCurveVisualizer
-from deepext.trainer.callbacks import LearningRateScheduler, ModelCheckout, VisualizeRandomObjectDetectionResult
+from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler, LearningRateScheduler
+from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.metrics.object_detection import *
 from deepext.metrics import MetricKey
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
@@ -129,5 +129,5 @@ if __name__ == "__main__":
                                                         save_filepath="detection_learning_curve.png")
     # Training.
     Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader, epochs=args.epoch,
-                       callbacks=callbacks, metric_ls=metric_ls,
+                       callbacks=callbacks, metric_ls=metric_ls, lr_scheduler_func=lr_scheduler,
                        calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)
