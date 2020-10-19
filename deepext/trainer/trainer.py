@@ -3,7 +3,6 @@ from typing import List, Callable
 from torch.utils.data import DataLoader
 import torch
 from statistics import mean
-import numpy as np
 import time
 
 from ..models.base import BaseModel
@@ -38,7 +37,7 @@ class Trainer:
         for epoch in range(epochs):
             start = time.time()
             mean_loss = self.train_epoch(data_loader)
-            lr_scheduler.step(epoch) if lr_scheduler else None
+            lr_scheduler.step(epoch + 1) if lr_scheduler else None
             elapsed_time = time.time() - start
             if learning_curve_visualizer:
                 learning_curve_visualizer.add_loss(mean_loss)

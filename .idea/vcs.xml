@@ -2,9 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/deepext/object_detection/ssd" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/deepext/object_detection/ssd.pytorch" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/import_models/EfficientDet.Pytorch" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/segmentation_image_util" vcs="Git" />
   </component>
 </project>

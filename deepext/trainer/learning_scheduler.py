@@ -2,12 +2,13 @@ import math
 
 
 class LearningRateScheduler:
-    def __init__(self, max_epoch: int, power=0.9):
+    def __init__(self, base_lr: float, max_epoch: int, power=0.9):
         self._max_epoch = max_epoch
         self._power = power
+        self._base_lr = base_lr
 
     def __call__(self, epoch: int):
-        return math.pow((1 - epoch / self._max_epoch), self._power)
+        return (1 - max(epoch - 1, 1) / self._max_epoch) ** self._power * self._base_lr
 
 
 class WarmUpLRScheduler:
@@ -32,8 +33,10 @@ class CosineDecayScheduler:
         self._warmup_epochs = warmup_epochs
 
     def __call__(self, epoch: int):
+        epoch = max(epoch, 1)
         if epoch <= self._warmup_epochs:
             return self._warmup_lr_limit * epoch / self._warmup_epochs
-        rad = math.pi * max(epoch - 1, 1) / self._max_epochs
+        epoch -= 1
+        rad = math.pi * epoch / self._max_epochs
         weight = (math.cos(rad) + 1.) / 2
         return self._warmup_lr_limit * weight

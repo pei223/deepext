@@ -17,7 +17,7 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
-voc_focal_loss = SegmentationFocalLoss(weights=[0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ])
+voc_focal_loss = SegmentationFocalLoss()
 
 
 def build_pspnet(dataset_setting, args):
@@ -152,7 +152,8 @@ if __name__ == "__main__":
         model.load_weight(args.load_weight_path)
 
     # Training setting.
-    lr_scheduler = LearningRateScheduler(args.epoch) if not isinstance(model, ShelfNetRealtime) else None
+    lr_scheduler = LearningRateScheduler(max_epoch=args.epoch, base_lr=args.lr) if not isinstance(model,
+                                                                                                  ShelfNetRealtime) else None
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=1, model=model,

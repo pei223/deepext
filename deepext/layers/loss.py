@@ -158,7 +158,7 @@ class SegmentationFocalLoss(nn.Module):
         if self.logits:
             ce_loss = F.binary_cross_entropy_with_logits(pred, teacher, reduce=False)
             pt = torch.exp(-ce_loss)
-            if self.class_weight_tensor:
+            if self.class_weight_tensor is not None:
                 class_weight_tensor = self.class_weight_tensor.expand(pred.shape[0],
                                                                       self.class_weight_tensor.shape[0],
                                                                       self.class_weight_tensor.shape[1],
@@ -201,7 +201,7 @@ class ClassificationFocalLoss(nn.Module):
             ce_loss = F.binary_cross_entropy_with_logits(pred, teacher, reduce=False)
             pt = torch.exp(-ce_loss)
 
-            if self.class_weight_tensor:
+            if self.class_weight_tensor is not None:
                 class_weight_tensor = self.class_weight_tensor.expand(pred.shape[0],
                                                                       self.class_weight_tensor.shape[0], )
                 focal_loss = (1. - pt) ** self.gamma * (ce_loss * class_weight_tensor)
