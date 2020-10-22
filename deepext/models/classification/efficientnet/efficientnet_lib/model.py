@@ -14,6 +14,7 @@ from .utils import (
     MemoryEfficientSwish,
 )
 
+
 class MBConvBlock(nn.Module):
     """
     Mobile Inverted Residual Bottleneck Block
@@ -167,7 +168,6 @@ class EfficientNetPredictor(nn.Module):
         for block in self._blocks:
             block.set_swish(memory_efficient)
 
-
     def extract_features(self, inputs):
         """ Returns output of the final convolution layer """
 
@@ -213,11 +213,11 @@ class EfficientNetPredictor(nn.Module):
         model = cls.from_name(model_name, override_params={'num_classes': num_classes})
         load_pretrained_weights(model, model_name, load_fc=(num_classes == 1000), advprop=advprop)
         if in_channels != 3:
-            Conv2d = get_same_padding_conv2d(image_size = model._global_params.image_size)
+            Conv2d = get_same_padding_conv2d(image_size=model._global_params.image_size)
             out_channels = round_filters(32, model._global_params)
             model._conv_stem = Conv2d(in_channels, out_channels, kernel_size=3, stride=2, bias=False)
         return model
-    
+
     @classmethod
     def get_image_size(cls, model_name):
         cls._check_model_name_is_valid(model_name)
@@ -226,7 +226,22 @@ class EfficientNetPredictor(nn.Module):
 
     @classmethod
     def _check_model_name_is_valid(cls, model_name):
-        """ Validates model name. """ 
-        valid_models = ['efficientnet-b'+str(i) for i in range(9)]
+        """ Validates model name. """
+        valid_models = ['efficientnet-b' + str(i) for i in range(9)]
         if model_name not in valid_models:
             raise ValueError('model_name should be one of: ' + ', '.join(valid_models))
+
+
+class EfficientNetFeatureExtractor(EfficientNetPredictor):
+    def forward(self, inputs):
+        """
+        :param inputs: (batch size, channels, height, width)
+        :return: (batch size, class)
+        """
+        return self.extract_features(inputs)
+
+    @classmethod
+    def from_name(cls, model_name, override_params=None):
+        cls._check_model_name_is_valid(model_name)
+        blocks_args, global_params = get_model_params(model_name, override_params)
+        return cls(blocks_args, global_params)

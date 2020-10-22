@@ -8,7 +8,7 @@ import torchvision
 from ..utils import *
 
 __all__ = ['BackBoneKey', 'BACKBONE_CHANNEL_COUNT_DICT', 'FeatureDecoder', 'FeatureMapBackBone',
-           'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', ]
+           'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', 'EfficientNetBackBone']
 
 
 class BackBoneKey(Enum):
@@ -19,25 +19,37 @@ class BackBoneKey(Enum):
     RESNET_152 = "resnet152"
     RESNEXT_50 = "resnext50"
     RESNEXT_101 = "resnext101"
+    EFFICIENTNET_B0 = "efficientnet-b0"
+    EFFICIENTNET_B1 = "efficientnet-b1"
+    EFFICIENTNET_B2 = "efficientnet-b2"
+    EFFICIENTNET_B3 = "efficientnet-b3"
+    EFFICIENTNET_B4 = "efficientnet-b4"
+    EFFICIENTNET_B5 = "efficientnet-b5"
+    EFFICIENTNET_B6 = "efficientnet-b6"
+    EFFICIENTNET_B7 = "efficientnet-b7"
 
     @staticmethod
     def from_val(val: str):
-        keys = [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNET_101,
-                BackBoneKey.RESNET_152, BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]
-        for key in keys:
+        for key in BACKBONE_KEYS:
             if key.value == val:
                 return key
         return None
 
 
+BACKBONE_KEYS = [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNET_101,
+                 BackBoneKey.RESNET_152, BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101,
+                 BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
+                 BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
+                 BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7]
+
 BACKBONE_CHANNEL_COUNT_DICT = {
     BackBoneKey.RESNET_18: [64, 128, 256, 512],
     BackBoneKey.RESNET_34: [64, 128, 256, 512],
     BackBoneKey.RESNET_50: [256, 512, 1024, 2048],
-    BackBoneKey.RESNET_101: [512, 1024, 2048, 4096],
-    BackBoneKey.RESNET_152: [512, 1024, 2048, 4096],  # TODO
-    BackBoneKey.RESNEXT_50: [512, 1024, 2048, 4096],  # TODO
-    BackBoneKey.RESNEXT_101: [512, 1024, 2048, 4096],  # TODO
+    BackBoneKey.RESNET_101: [256, 512, 1024, 2048],
+    BackBoneKey.RESNET_152: [256, 512, 1024, 2048],
+    BackBoneKey.RESNEXT_50: [256, 512, 1024, 2048],
+    BackBoneKey.RESNEXT_101: [256, 512, 1024, 2048],
 }
 
 
@@ -185,7 +197,7 @@ class ResNextBackBone(nn.Module):
         assert resnext_type in [BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]
         if resnext_type == BackBoneKey.RESNEXT_50:
             self.resnet_model = torchvision.models.resnext50_32x4d(pretrained=pretrained)
-        elif resnext_type.value == BackBoneKey.RESNEXT_101:
+        elif resnext_type == BackBoneKey.RESNEXT_101:
             self.resnet_model = torchvision.models.resnext101_32x8d(pretrained=pretrained)
 
     def forward(self, x):
@@ -203,3 +215,16 @@ class ResNextBackBone(nn.Module):
         out3 = self.resnet_model.layer3(out2)
         out4 = self.resnet_model.layer4(out3)
         return out1, out2, out3, out4
+
+
+class EfficientNetBackBone(nn.Module):
+    pass
+#     def __init__(self, model_type: BackBoneKey = BackBoneKey.EFFICIENTNET_B0, pretrained=True):
+#         super().__init__()
+#         assert model_type in [BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
+#                               BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
+#                               BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7, ]
+#         self.model = EfficientNetFeatureExtractor.from_name(model_name=model_type.value)
+#
+#     def forward(self, x):
+#         return self.model(x)

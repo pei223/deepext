@@ -9,7 +9,7 @@ from deepext.layers.subnetwork import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, \
     ShallowShelfNet
-from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler
+from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
 from deepext.metrics.segmentation import *
@@ -100,7 +100,6 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = A.Compose([
         A.HorizontalFlip(),
-        A.Rotate((-30, 30)),
         A.RandomResizedCrop(dataset_setting.size[0], dataset_setting.size[1], scale=(0.5, 2.0)),
         A.CoarseDropout(max_height=int(setting.size[1] / 5), max_width=int(setting.size[0] / 5)),
         A.RandomBrightnessContrast(),
@@ -152,8 +151,12 @@ if __name__ == "__main__":
         model.load_weight(args.load_weight_path)
 
     # Training setting.
-    lr_scheduler = LearningRateScheduler(max_epoch=args.epoch, base_lr=args.lr) if not isinstance(model,
-                                                                                                  ShelfNetRealtime) else None
+    # lr_scheduler = LearningRateScheduler(max_epoch=args.epoch, base_lr=args.lr) if not isinstance(model,
+    #                                                                                               ShelfNetRealtime) else None
+    lr_scheduler = CosineDecayScheduler(warmup_lr_limit=args.lr, max_epochs=args.epoch,
+                                        warmup_epochs=0) if not isinstance(model,
+                                                                           ShelfNetRealtime) else None
+
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=1, model=model,

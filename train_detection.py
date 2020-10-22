@@ -64,7 +64,6 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
     train_transforms = AlbumentationsDetectionWrapperTransform([
         A.HorizontalFlip(),
-        A.Rotate((-30, 30)),
         A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
         A.CoarseDropout(max_height=int(setting.size[1] / 5), max_width=int(setting.size[0] / 5)),
         A.RandomBrightnessContrast(),
