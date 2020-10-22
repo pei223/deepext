@@ -1,9 +1,10 @@
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
 from deepext.data.dataset import VOCDataset, AdjustDetectionTensorCollator
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
+from deepext.layers.backbone_key import BackBoneKey
 from deepext.layers.subnetwork import *
 
 image_dir = "D:/dataset/object_detection/pfood/images"
@@ -23,9 +24,9 @@ test_dataset = VOCDataset(class_index_dict=class_index_dict, image_dir_path=imag
 test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=True,
                              collate_fn=AdjustDetectionTensorCollator())
 
-en = EfficientNetBackBone(model_type=BackBoneKey.EFFICIENTNET_B0)
+sub = create_backbone(backbone_key=BackBoneKey.RESNEXT_101, pretrained=False)
 for train_x, teacher in test_dataloader:
-    result = en(train_x)
+    result = sub(train_x)
     for r in result:
         print(r.shape)
     break

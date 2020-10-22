@@ -1,13 +1,11 @@
 from typing import Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
 
 from ...base import SegmentationModel
 
 from .modules import SegmentationShelf, OutLayer
-from ....utils import try_cuda
+from ....layers.backbone_key import BackBoneKey, BACKBONE_CHANNEL_COUNT_DICT
 from ....layers.loss import *
 from ....layers.basic import *
 from ....layers.subnetwork import *

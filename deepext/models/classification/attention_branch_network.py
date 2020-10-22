@@ -1,5 +1,5 @@
-from typing import Tuple
 from ..base import AttentionClassificationModel
+from ...layers.backbone_key import BackBoneKey, BACKBONE_CHANNEL_COUNT_DICT
 from ...layers.subnetwork import *
 from ...layers.block import *
 from ...layers.basic import *

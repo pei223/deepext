@@ -1,56 +1,13 @@
-from enum import Enum
-import numpy as np
-
+from .backbone_key import BackBoneKey
 from .block import *
 from .basic import *
 from torch.nn import functional as F
 import torchvision
-from ..utils import *
 
-__all__ = ['BackBoneKey', 'BACKBONE_CHANNEL_COUNT_DICT', 'FeatureDecoder', 'FeatureMapBackBone',
+__all__ = ['FeatureDecoder', 'FeatureMapBackBone', 'create_backbone',
            'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', 'EfficientNetBackBone']
 
-
-class BackBoneKey(Enum):
-    RESNET_18 = "resnet18"
-    RESNET_34 = "resnet34"
-    RESNET_50 = "resnet50"
-    RESNET_101 = "resnet101"
-    RESNET_152 = "resnet152"
-    RESNEXT_50 = "resnext50"
-    RESNEXT_101 = "resnext101"
-    EFFICIENTNET_B0 = "efficientnet-b0"
-    EFFICIENTNET_B1 = "efficientnet-b1"
-    EFFICIENTNET_B2 = "efficientnet-b2"
-    EFFICIENTNET_B3 = "efficientnet-b3"
-    EFFICIENTNET_B4 = "efficientnet-b4"
-    EFFICIENTNET_B5 = "efficientnet-b5"
-    EFFICIENTNET_B6 = "efficientnet-b6"
-    EFFICIENTNET_B7 = "efficientnet-b7"
-
-    @staticmethod
-    def from_val(val: str):
-        for key in BACKBONE_KEYS:
-            if key.value == val:
-                return key
-        return None
-
-
-BACKBONE_KEYS = [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNET_101,
-                 BackBoneKey.RESNET_152, BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101,
-                 BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
-                 BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
-                 BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7]
-
-BACKBONE_CHANNEL_COUNT_DICT = {
-    BackBoneKey.RESNET_18: [64, 128, 256, 512],
-    BackBoneKey.RESNET_34: [64, 128, 256, 512],
-    BackBoneKey.RESNET_50: [256, 512, 1024, 2048],
-    BackBoneKey.RESNET_101: [256, 512, 1024, 2048],
-    BackBoneKey.RESNET_152: [256, 512, 1024, 2048],
-    BackBoneKey.RESNEXT_50: [256, 512, 1024, 2048],
-    BackBoneKey.RESNEXT_101: [256, 512, 1024, 2048],
-}
+from .efficientnet_subnetwork import EfficientNetFeatureExtractor
 
 
 class FeatureMapBackBone(nn.Module):
@@ -218,13 +175,27 @@ class ResNextBackBone(nn.Module):
 
 
 class EfficientNetBackBone(nn.Module):
-    pass
-#     def __init__(self, model_type: BackBoneKey = BackBoneKey.EFFICIENTNET_B0, pretrained=True):
-#         super().__init__()
-#         assert model_type in [BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
-#                               BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
-#                               BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7, ]
-#         self.model = EfficientNetFeatureExtractor.from_name(model_name=model_type.value)
-#
-#     def forward(self, x):
-#         return self.model(x)
+    def __init__(self, model_type: BackBoneKey = BackBoneKey.EFFICIENTNET_B0, pretrained=True):
+        super().__init__()
+        assert model_type in [BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
+                              BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
+                              BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7, ]
+        if pretrained:
+            self.model = EfficientNetFeatureExtractor.from_pretrained(model_name=model_type.value)
+        else:
+            self.model = EfficientNetFeatureExtractor.from_name(model_name=model_type.value)
+
+    def forward(self, x):
+        return self.model(x)
+
+
+def create_backbone(backbone_key: BackBoneKey, pretrained=True) -> nn.Module:
+    if backbone_key in [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNET_101,
+                        BackBoneKey.RESNET_152]:
+        return ResNetBackBone(resnet_type=backbone_key, pretrained=pretrained)
+    elif backbone_key in [BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]:
+        return ResNextBackBone(resnext_type=backbone_key, pretrained=pretrained)
+    elif backbone_key in [BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
+                          BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
+                          BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7, ]:
+        return EfficientNetBackBone(model_type=backbone_key, pretrained=pretrained)

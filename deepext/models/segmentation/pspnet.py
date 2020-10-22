@@ -1,12 +1,7 @@
-import numpy as np
-import torch
-from torch import nn
-
 from ..base import SegmentationModel
-from ...utils import try_cuda
+from ...layers.backbone_key import BackBoneKey
 from ...layers.subnetwork import *
 from ...layers.basic import *
-from ...layers.block import *
 from ...layers.loss import *
 from ...utils import *
 

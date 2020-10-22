@@ -5,7 +5,7 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
 from deepext.layers.loss import SegmentationFocalLoss
-from deepext.layers.subnetwork import BackBoneKey
+from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, \
     ShallowShelfNet
