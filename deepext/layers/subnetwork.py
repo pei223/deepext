@@ -185,8 +185,8 @@ class EfficientNetBackBone(nn.Module):
         else:
             self.model = EfficientNetFeatureExtractor.from_name(model_name=model_type.value)
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, x, start_idx=0, end_idx=-1):
+        return self.model(x, start_idx, end_idx)
 
 
 def create_backbone(backbone_key: BackBoneKey, pretrained=True) -> nn.Module:

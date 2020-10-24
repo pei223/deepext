@@ -1,18 +1,12 @@
 import argparse
 from deepext.models.base import SegmentationModel, DetectionModel, ClassificationModel, AttentionClassificationModel
-from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet
+from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
 from deepext.models.object_detection import EfficientDetector
 from deepext.models.classification import EfficientNet, AttentionBranchNetwork, ResNetAttentionBranchNetwork, \
     MobileNetV3
 from deepext.camera import RealtimeDetection, RealtimeSegmentation, RealtimeAttentionClassification, \
     RealtimeClassification
 from deepext.utils import *
-
-
-def build_pspnet(args):
-    if args.submodel == "resnet":
-        return ResPSPNet(n_classes=args.n_classes, img_size=args.image_size)
-    return PSPNet(n_classes=args.n_classes, img_size=args.image_size)
 
 
 def build_unet(args):
@@ -46,7 +40,6 @@ def build_efficientnet(args):
 # NOTE モデル・データセットはここを追加
 # TODO ここ他のTrainスクリプトと共通化したい
 MODEL_BUILD_DICT = {
-    "pspnet": build_pspnet,
     "unet": build_unet,
     "custom_shelfnet": build_shelfnet,
     "efficientdet": build_efficientdet,

@@ -30,9 +30,10 @@ class EfficientDet(nn.Module):
                  is_training=True,
                  threshold=0.01,
                  iou_threshold=0.5,
-                 backbone_path: str = None):
+                 backbone_path: str = None, backbone_pretrained=True):
         super(EfficientDet, self).__init__()
-        self.backbone: EfficientNet = EfficientNet.from_name(MODEL_MAP[network])
+        self.backbone: EfficientNet = EfficientNet.from_pretrained(
+            MODEL_MAP[network]) if backbone_pretrained else EfficientNet.from_name(MODEL_MAP[network])
         if backbone_path:
             checkpoint = torch.load(backbone_path)
             self.backbone.load_state_dict(checkpoint)

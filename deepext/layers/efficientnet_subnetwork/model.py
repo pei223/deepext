@@ -187,7 +187,7 @@ class EfficientNetFeatureExtractor(nn.Module):
         for block in self._blocks:
             block.set_swish(memory_efficient)
 
-    def extract_features(self, inputs):
+    def extract_features(self, inputs, start_idx: int, end_idx: int):
         """ Returns output of the final convolution layer """
         # Stem
         x = self._swish(self._bn0(self._conv_stem(inputs)))
@@ -197,6 +197,8 @@ class EfficientNetFeatureExtractor(nn.Module):
         num_repeat = 0
         # Blocks
         for idx, block in enumerate(self._blocks):
+            if index == end_idx:
+                return P[start_idx:]
             drop_connect_rate = self._global_params.drop_connect_rate
             if drop_connect_rate:
                 drop_connect_rate *= float(idx) / len(self._blocks)
@@ -206,13 +208,12 @@ class EfficientNetFeatureExtractor(nn.Module):
                 num_repeat = 0
                 index = index + 1
                 P.append(x)
-        return P
+        return P[start_idx:]
 
-    def forward(self, inputs):
+    def forward(self, inputs, start_idx: int, end_idx: int):
         """ Calls extract_features to extract features, applies final linear layer, and returns logits. """
         # Convolution layers
-        P = self.extract_features(inputs)
-        return P
+        return self.extract_features(inputs, start_idx=start_idx, end_idx=end_idx)
 
     @classmethod
     def from_name(cls, model_name, override_params=None):
@@ -263,12 +264,3 @@ class EfficientNetFeatureExtractor(nn.Module):
             list_feature.append(self._blocks_args[idx].output_filters)
 
         return list_feature
-
-
-if __name__ == '__main__':
-    model = EfficientNet.from_pretrained('efficientnet-b0')
-    inputs = torch.randn(4, 3, 640, 640)
-    P = model(inputs)
-    for idx, p in enumerate(P):
-        print('P{}: {}'.format(idx, p.size()))
-    # print('model: ', model)

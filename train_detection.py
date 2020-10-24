@@ -104,8 +104,6 @@ if __name__ == "__main__":
     assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
     img_size = (args.image_size, args.image_size)
     dataset_setting.set_size(img_size)
-    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
-                                                                                    args.batch_size)
 
     # Fetch model and load weight.
     build_model_func = MODEL_DICT.get(args.model)
@@ -113,6 +111,9 @@ if __name__ == "__main__":
     model: DetectionModel = try_cuda(build_model_func(dataset_setting, args))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
+
+    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
+                                                                                    args.batch_size)
 
     # Training setting.
     # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)

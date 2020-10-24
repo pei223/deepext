@@ -7,8 +7,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 from deepext.layers.loss import SegmentationFocalLoss
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
-from deepext.models.segmentation import PSPNet, UNet, ResUNet, ResPSPNet, CustomShelfNet, ShelfNetRealtime, \
-    ShallowShelfNet
+from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet, ShelfNetRealtime
 from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
@@ -18,14 +17,6 @@ from deepext.utils import *
 from util import DataSetSetting
 
 voc_focal_loss = SegmentationFocalLoss()
-
-
-def build_pspnet(dataset_setting, args):
-    if args.submodel is None:
-        return PSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=args.lr)
-    if args.submodel == "resnet":
-        return ResPSPNet(n_classes=dataset_setting.n_classes, img_size=dataset_setting.size, lr=args.lr)
-    assert f"Invalid sub model type: {args.submodel}.  {args.model} Model require resnet or none."
 
 
 def build_unet(dataset_setting, args):
@@ -40,12 +31,7 @@ def build_unet(dataset_setting, args):
 def build_custom_shelfnet(dataset_setting, args):
     loss_func = voc_focal_loss if args.dataset in ["voc2007", "voc2012"] else None
     return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=args.lr, out_size=dataset_setting.size,
-                          loss_func=loss_func, backbone=BackBoneKey.from_val(args.submodel))
-
-
-def build_shallow_shelfnet(dataset_setting, args):
-    return ShallowShelfNet(n_classes=dataset_setting.n_classes, lr=args.lr, out_size=dataset_setting.size,
-                           loss_type="ce", backbone=args.submodel)
+                          loss_func=loss_func, backbone=BackBoneKey.from_val(args.submodel), backbone_pretrained=True)
 
 
 def build_shelfnet_realtime(dataset_setting, args):
@@ -88,10 +74,8 @@ DATASET_DICT = {
                                              'license plate'], dataset_build_func=build_cityscape_dataset)
 }
 MODEL_DICT = {
-    "pspnet": build_pspnet,
     "unet": build_unet,
     "custom_shelfnet": build_custom_shelfnet,
-    "shallow_shelfnet": build_shallow_shelfnet,
     "shelfnet_realtime": build_shelfnet_realtime,
 }
 
@@ -141,8 +125,7 @@ if __name__ == "__main__":
     assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
     img_size = (args.image_size, args.image_size)
     dataset_setting.set_size(img_size)
-    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
-                                                                                    args.batch_size)
+
     # Fetch model and load weight.
     build_model_func = MODEL_DICT.get(args.model)
     assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
@@ -150,6 +133,8 @@ if __name__ == "__main__":
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
 
+    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
+                                                                                    args.batch_size)
     # Training setting.
     # lr_scheduler = LearningRateScheduler(max_epoch=args.epoch, base_lr=args.lr) if not isinstance(model,
     #                                                                                               ShelfNetRealtime) else None

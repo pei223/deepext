@@ -12,13 +12,14 @@ __all__ = ['EfficientDetector']
 
 class EfficientDetector(DetectionModel):
     def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.5, max_detections=100,
-                 backbone_path: str = None):
+                 backbone_path: str = None, backbone_pretrained=True):
         super().__init__()
         self._model = try_cuda(EfficientDet(num_classes=num_classes,
                                             network=network,
                                             W_bifpn=EFFICIENTDET[network]['W_bifpn'],
                                             D_bifpn=EFFICIENTDET[network]['D_bifpn'],
-                                            D_class=EFFICIENTDET[network]['D_class'], backbone_path=backbone_path))
+                                            D_class=EFFICIENTDET[network]['D_class'], backbone_path=backbone_path,
+                                            backbone_pretrained=backbone_pretrained))
         self._num_classes = num_classes
         self._network = network
         self._optimizer = optim.Adam(self._model.parameters(), lr=lr)

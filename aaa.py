@@ -24,7 +24,7 @@ test_dataset = VOCDataset(class_index_dict=class_index_dict, image_dir_path=imag
 test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=True,
                              collate_fn=AdjustDetectionTensorCollator())
 
-sub = create_backbone(backbone_key=BackBoneKey.RESNEXT_101, pretrained=False)
+sub = create_backbone(backbone_key=BackBoneKey.EFFICIENTNET_B0, pretrained=True)
 for train_x, teacher in test_dataloader:
     result = sub(train_x)
     for r in result:
