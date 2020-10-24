@@ -4,11 +4,12 @@ from albumentations.pytorch.transforms import ToTensorV2
 import torchvision
 from torch.utils.data import DataLoader, Dataset
 
+from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import BaseModel
 from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, \
-    ResNetAttentionBranchNetwork
+    AttentionBranchNetwork
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
-from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler
+from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler, CosineDecayScheduler
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, ModelCheckout
 from deepext.metrics.classification import *
 from deepext.metrics import MetricKey
@@ -28,7 +29,8 @@ def build_mobilenet(dataset_setting, args):
 
 
 def build_attention_branch_network(dataset_setting, args):
-    return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=args.lr))
+    return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=args.lr,
+                                           backbone=BackBoneKey.from_val(args.submodel)))
 
 
 def build_stl_dataset(root_dir: str, train_transforms, test_transforms):
@@ -95,6 +97,7 @@ parser.add_argument('--load_weight_path', type=str, default=None, help="Saved we
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--efficientnet_scale', type=int, default=0, help="Number of scale of EfficientNet.")
 parser.add_argument('--image_size', type=int, default=None, help="Image size(default is 256)")
+parser.add_argument('--submodel', type=str, default=None, help=f'Type of submodel(resnet18, resnet34...).')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -105,8 +108,7 @@ if __name__ == "__main__":
     if args.image_size:
         img_size = (args.image_size, args.image_size)
         dataset_setting.set_size(img_size)
-    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
-                                                                                    args.batch_size)
+
     # Fetch model and load weight.
     build_model_func = MODEL_DICT.get(args.model)
     assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
@@ -114,8 +116,11 @@ if __name__ == "__main__":
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
 
+    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
+                                                                                    args.batch_size)
     # Training setting.
-    lr_scheduler = LearningRateScheduler(args.epoch)
+    # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
+    lr_scheduler = CosineDecayScheduler(warmup_lr_limit=args.lr, max_epochs=args.epoch, warmup_epochs=0)
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):

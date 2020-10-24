@@ -1,8 +1,10 @@
 import argparse
+
+from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel, DetectionModel, ClassificationModel, AttentionClassificationModel
 from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
 from deepext.models.object_detection import EfficientDetector
-from deepext.models.classification import EfficientNet, AttentionBranchNetwork, ResNetAttentionBranchNetwork, \
+from deepext.models.classification import EfficientNet, AttentionBranchNetwork, AttentionBranchNetwork, \
     MobileNetV3
 from deepext.camera import RealtimeDetection, RealtimeSegmentation, RealtimeAttentionClassification, \
     RealtimeClassification
@@ -16,7 +18,8 @@ def build_unet(args):
 
 
 def build_shelfnet(args):
-    return CustomShelfNet(n_classes=args.n_classes, out_size=args.image_size)
+    return CustomShelfNet(n_classes=args.n_classes, out_size=args.image_size,
+                          backbone=BackBoneKey.from_val(args.submodel))
 
 
 def build_efficientdet(args):
@@ -28,9 +31,8 @@ def build_mobilenet(args):
 
 
 def build_attention_branch_network(args):
-    if args.submodel == "resnet":
-        return ResNetAttentionBranchNetwork(n_classes=args.n_classes)
-    return AttentionBranchNetwork(n_classes=args.n_classes)
+    return AttentionBranchNetwork(n_classes=args.n_classes,
+                                  backbone=BackBoneKey.from_val(args.submodel))
 
 
 def build_efficientnet(args):
@@ -54,7 +56,7 @@ parser.add_argument('--model', type=str, required=True, help=f"Model type in {li
 parser.add_argument('--load_weight_path', type=str, help="Saved weight path", required=True)
 parser.add_argument('--image_size', type=int, default=256, help="Image size(default is 256)")
 parser.add_argument('--n_classes', type=int, help="Class number.", required=True)
-parser.add_argument('--submodel', type=str, default=None, help=f'Type of model(ResNet).')
+parser.add_argument('--submodel', type=str, default=None, help=f'Type of model(ResNet, resnet18, resnet34,...).')
 parser.add_argument('--model_scale', type=int, default=0, help="Scale of models(EfficientDet, EfficientNet).")
 parser.add_argument('--label_names_path', type=str, default="voc_label_names.txt",
                     help="File path of label names (Classification and Detection only)")

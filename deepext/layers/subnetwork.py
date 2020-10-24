@@ -4,7 +4,7 @@ from .basic import *
 from torch.nn import functional as F
 import torchvision
 
-__all__ = ['FeatureDecoder', 'FeatureMapBackBone', 'create_backbone',
+__all__ = ['FeatureDecoder', 'FeatureMapBackBone', 'create_backbone', 'ClassifierHead',
            'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', 'EfficientNetBackBone']
 
 from .efficientnet_subnetwork import EfficientNetFeatureExtractor
@@ -79,6 +79,31 @@ class FeatureDecoder(nn.Module):
         x = self.classification(x)
         output = self._upsampling(x)
         return output
+
+
+class ClassifierHead(nn.Module):
+    def __init__(self, in_channels: int, n_classes: int, n_blocks=3):
+        super().__init__()
+        self.model = nn.Sequential()
+        for i in range(n_blocks - 1):
+            if i == 0:
+                self.model.add_module(f"block{i + 1}",
+                                      BottleNeck(in_channels=in_channels,
+                                                 mid_channels=in_channels,
+                                                 out_channels=in_channels, stride=2))
+                continue
+            self.model.add_module(f"block{i + 1}",
+                                  BottleNeckIdentity(in_channels=in_channels,
+                                                     out_channels=in_channels))
+        self.model.add_module(f"block{n_blocks}",
+                              nn.Conv2d(kernel_size=1, padding=0, in_channels=in_channels,
+                                        out_channels=n_classes))
+        self.model.add_module("gap", GlobalAveragePooling())
+
+    def forward(self, x):
+        y = self.model(x)
+        y = y.view(y.shape[0], -1)  # (Batch size, class num)
+        return F.softmax(y, dim=1)
 
 
 class AttentionClassifierBranch(nn.Module):
