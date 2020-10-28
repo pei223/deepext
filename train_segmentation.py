@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, Dataset
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from deepext.layers.loss import SegmentationFocalLoss
+from deepext.layers.loss import SegmentationFocalLoss, SegmentationFocalLossWithLabelSmoothing
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet, ShelfNetRealtime
@@ -16,6 +16,7 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
+# voc_focal_loss = SegmentationFocalLossWithLabelSmoothing(n_classes=21)
 voc_focal_loss = SegmentationFocalLoss()
 
 
@@ -138,7 +139,7 @@ if __name__ == "__main__":
     # Training setting.
     # lr_scheduler = LearningRateScheduler(max_epoch=args.epoch, base_lr=args.lr) if not isinstance(model,
     #                                                                                               ShelfNetRealtime) else None
-    lr_scheduler = CosineDecayScheduler(warmup_lr_limit=args.lr, max_epochs=args.epoch,
+    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch,
                                         warmup_epochs=0) if not isinstance(model,
                                                                            ShelfNetRealtime) else None
 

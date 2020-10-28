@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     # Training setting.
     # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
-    lr_scheduler = CosineDecayScheduler(warmup_lr_limit=args.lr, max_epochs=args.epoch, warmup_epochs=0)
+    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0, min_lr=1e-5)
     callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
     if args.progress_dir:
         callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,

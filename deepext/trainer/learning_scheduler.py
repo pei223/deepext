@@ -27,16 +27,18 @@ class WarmUpLRScheduler:
 
 
 class CosineDecayScheduler:
-    def __init__(self, max_epochs: int, warmup_lr_limit=0.16, warmup_epochs=5):
+    def __init__(self, max_epochs: int, max_lr=0.16, warmup_epochs=5, min_lr=0):
         self._max_epochs = max_epochs
-        self._warmup_lr_limit = warmup_lr_limit
+        self._max_lr = max_lr
+        self._min_lr = min_lr
         self._warmup_epochs = warmup_epochs
 
     def __call__(self, epoch: int):
         epoch = max(epoch, 1)
         if epoch <= self._warmup_epochs:
-            return self._warmup_lr_limit * epoch / self._warmup_epochs
+            return self._max_lr * epoch / self._warmup_epochs
         epoch -= 1
         rad = math.pi * epoch / self._max_epochs
         weight = (math.cos(rad) + 1.) / 2
-        return self._warmup_lr_limit * weight
+
+        return (self._max_lr - self._min_lr) * weight + self._min_lr

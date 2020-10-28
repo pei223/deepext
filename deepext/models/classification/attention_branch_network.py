@@ -13,6 +13,7 @@ class AttentionBranchNetwork(AttentionClassificationModel):
     def __init__(self, n_classes: int, pretrained=True,
                  backbone: BackBoneKey = BackBoneKey.RESNET_50, n_blocks=3, lr=1e-4):
         super().__init__()
+        self._backbone = backbone
         self.model = try_cuda(
             ABNModel(n_classes=n_classes, pretrained=pretrained, backbone=backbone, n_blocks=n_blocks))
         self._n_classes = n_classes
@@ -49,7 +50,15 @@ class AttentionBranchNetwork(AttentionClassificationModel):
         self.model.eval()
         with torch.no_grad():
             x = try_cuda(x).float()
-            return self.model(x)[0].cpu().numpy(), self.model(x)[2][:, 0].cpu().numpy()
+            pred, _, heatmap = self.model(x)
+            pred, heatmap = pred.cpu().numpy(), heatmap[:, 0].cpu().numpy()
+            heatmap = self._normalize_heatmap(heatmap)
+            return pred, heatmap
+
+    def _normalize_heatmap(self, heatmap: np.ndarray):
+        min_val = np.min(heatmap)
+        max_val = np.max(heatmap)
+        return (heatmap - min_val) / (max_val - min_val)
 
     def save_weight(self, save_path: str):
         dict_to_save = {
@@ -70,7 +79,8 @@ class AttentionBranchNetwork(AttentionClassificationModel):
 
     def get_model_config(self):
         return {
-            'model_name': 'ResNetAttentionBranchNetwork',
+            'model_name': 'AttentionBranchNetwork',
+            'backbone': self._backbone.value,
             'num_classes': self._n_classes,
             'optimizer': self._optimizer.__class__.__name__
         }
@@ -83,7 +93,7 @@ class ABNModel(nn.Module):
     def __init__(self, n_classes: int, pretrained=True,
                  backbone: BackBoneKey = BackBoneKey.RESNET_50, n_blocks=3):
         super().__init__()
-        self.feature_extractor: ResNetBackBone = create_backbone(backbone_key=backbone, pretrained=pretrained)
+        self.feature_extractor = create_backbone(backbone_key=backbone, pretrained=pretrained)
         feature_channel_num = BACKBONE_CHANNEL_COUNT_DICT[backbone][-1]
         self.attention_branch = AttentionClassifierBranch(in_channels=feature_channel_num, n_classes=n_classes,
                                                           n_blocks=n_blocks)
