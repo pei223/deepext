@@ -16,7 +16,6 @@ from deepext.utils import *
 
 from util import DataSetSetting
 
-# voc_focal_loss = SegmentationFocalLossWithLabelSmoothing(n_classes=21)
 voc_focal_loss = SegmentationFocalLoss()
 
 
