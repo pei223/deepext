@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import torch
 from statistics import mean
 import time
+import tqdm
 
 from ..models.base import BaseModel
 from ..utils.tensor_util import try_cuda
@@ -60,7 +61,8 @@ class Trainer:
 
     def train_epoch(self, data_loader: DataLoader) -> float:
         loss_list = []
-        for train_x, teacher in data_loader:
+        # TODO 出力整形
+        for train_x, teacher in tqdm.tqdm(data_loader):
             train_x = try_cuda(train_x)
             teacher = try_cuda(teacher)
             if train_x.shape[0] == 1:  # Batch normalizationが動かなくなるため
