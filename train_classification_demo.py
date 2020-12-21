@@ -5,11 +5,10 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.layers.backbone_key import BackBoneKey
-from deepext.models.base import BaseModel
-from deepext.models.classification import AttentionBranchNetwork, EfficientNet, MobileNetV3, \
+from deepext.models.classification import EfficientNet, MobileNetV3, \
     AttentionBranchNetwork
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
-from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler, CosineDecayScheduler
+from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, ModelCheckout
 from deepext.metrics.classification import *
 from deepext.metrics import MetricKey
@@ -121,7 +120,7 @@ if __name__ == "__main__":
     # Training setting.
     # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="saved_weights")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):
             callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=1,

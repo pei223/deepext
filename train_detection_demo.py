@@ -4,10 +4,10 @@ from torch.utils.data import DataLoader, Dataset
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from deepext.models.base import DetectionModel, BaseModel
+from deepext.models.base import DetectionModel
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
-from deepext.models.object_detection import EfficientDetector, M2Det, SSD
-from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler, LearningRateScheduler
+from deepext.models.object_detection import EfficientDetector, SSD
+from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.metrics.object_detection import *
 from deepext.metrics import MetricKey
@@ -22,9 +22,9 @@ def build_efficientdet(dataset_setting, args):
     return EfficientDetector(num_classes=dataset_setting.n_classes, lr=args.lr,
                              network=f"efficientdet-d{args.efficientdet_scale}", score_threshold=0.5)
 
-
-def build_m2det(dataset_setting, args):
-    return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
+#
+# def build_m2det(dataset_setting, args):
+#     return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
 
 
 def build_ssd(dataset_setting, args):
@@ -51,7 +51,7 @@ DATASET_DICT = {
 }
 MODEL_DICT = {
     "efficientdet": build_efficientdet,
-    "m2det": build_m2det,
+    # "m2det": build_m2det,
     "ssd": build_ssd,
 }
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # Training setting.
     # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="saved_weights")]
     if args.progress_dir:
         callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
                                                               out_dir=args.progress_dir,

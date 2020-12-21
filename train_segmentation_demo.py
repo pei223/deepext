@@ -4,11 +4,11 @@ from torch.utils.data import DataLoader, Dataset
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from deepext.layers.loss import SegmentationFocalLoss, SegmentationFocalLossWithLabelSmoothing
+from deepext.layers.loss import SegmentationFocalLoss
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet, ShelfNetRealtime
-from deepext.trainer import Trainer, LearningCurveVisualizer, LearningRateScheduler, CosineDecayScheduler
+from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
 from deepext.metrics.segmentation import *
@@ -142,7 +142,7 @@ if __name__ == "__main__":
                                         warmup_epochs=0) if not isinstance(model,
                                                                            ShelfNetRealtime) else None
 
-    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="./saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="saved_weights")]
     if args.progress_dir:
         callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=1, model=model,
                                                            dataset=test_dataset))

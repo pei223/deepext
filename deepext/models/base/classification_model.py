@@ -7,17 +7,23 @@ from ...utils.image_utils import *
 
 
 class ClassificationModel(BaseModel):
-    def predict_label(self, img: Image.Image or torch.Tensor or np.ndarray,
-                      img_size_for_model: Tuple[int, int]) -> int:
+    def predict_label(self, img: torch.Tensor or np.ndarray, require_normalize=False) -> int:
         """
         :param img: (batch size, channels, height, width)
         :return: Class num
         """
         # NOTE Override if needed.
-        img_tensor = img_to_tensor(resize_image(img, img_size_for_model))
-        if img_tensor.ndim == 3:
-            img_tensor = img_tensor.view(-1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2])
+        assert img.ndim == 3, f"Invalid data shape: {img.shape}. Expected 3 dimension"
+        if isinstance(img, np.ndarray):
+            img_tensor = torch.tensor(img.transpose(2, 0, 1))
+        elif isinstance(img, torch.Tensor):
+            img_tensor = img
+        else:
+            assert False, f"Invalid data type: {type(img)}"
+        if require_normalize:
+            img_tensor = img_tensor.float() / 255.
         img_tensor = try_cuda(img_tensor)
+        img_tensor = img_tensor.view(-1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2])
 
         return self.predict(img_tensor)[0].argmax()
 
