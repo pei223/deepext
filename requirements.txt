@@ -17,6 +17,7 @@ pandas
 Pillow==8.0.1
 pyparsing==2.4.7
 python-dateutil==2.8.1
+python-dotenv
 PyWavelets==1.1.1
 PyYAML==5.3.1
 requests

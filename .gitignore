@@ -212,4 +212,6 @@ dmypy.json
 *learning_curve.png
 output.mp4
 
+.env
+
 # End of https://www.gitignore.io/api/python,pycharm

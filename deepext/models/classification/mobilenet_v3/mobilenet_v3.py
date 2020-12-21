@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 from ...base import ClassificationModel
-from .mobilenetv3_lib.model import mobilenetv3
+from .mobilenetv3_lib.model import MobileNetV3 as MobileNetV3lib
 from ....utils.tensor_util import try_cuda
 
 __all__ = ['MobileNetV3']
@@ -14,9 +14,9 @@ class MobileNetV3(ClassificationModel):
         super().__init__()
         self._num_classes = num_classes
         self._mode = mode
-        self._model = mobilenetv3(num_classes=num_classes, mode=mode, pretrained=pretrained)
+        self._model = MobileNetV3lib(num_classes=num_classes, mode=mode)
         # state_dict = torch.load('mobilenetv3_small_67.4.pth.tar')
-        self._optimizer = optim.SGD(self._model.parameters(), lr=lr, momentum=0.9)
+        self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
         self._criterion = torch.nn.CrossEntropyLoss()
         if torch.cuda.is_available():
             self._model.cuda()

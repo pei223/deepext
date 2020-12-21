@@ -45,7 +45,7 @@ class Trainer:
             for callback in callbacks:
                 callback(epoch)
             # 指標算出
-            if (epoch + 1) % calc_metrics_per_epoch == 0:
+            if (epoch + 1) % calc_metrics_per_epoch == 0 and len(metric_ls) > 0:
                 metric_for_graph = learning_curve_visualizer.metric_for_graph if learning_curve_visualizer else None
                 # print("\nTrain Metrics\n" + self.calc_metrics(data_loader, metric_ls, metric_for_graph))
                 # train_metric_val_for_graph = metric_for_graph.calc_summary() if metric_for_graph else None
