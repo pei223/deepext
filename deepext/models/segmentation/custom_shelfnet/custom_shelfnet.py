@@ -82,11 +82,15 @@ class ShelfNetModel(nn.Module):
 
         backbone_out_channel_ls = BACKBONE_CHANNEL_COUNT_DICT[backbone]
         assert backbone_out_channel_ls is not None, "Invalid backbone type."
-        if backbone in [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34]:
+        if backbone in [BackBoneKey.RESNET_18]:
             mid_channel_ls = [64, 128, 256]
-        elif backbone in [BackBoneKey.RESNET_50, BackBoneKey.RESNET_101, BackBoneKey.RESNET_152, BackBoneKey.RESNEXT_50,
-                          BackBoneKey.RESNEXT_101]:
+        elif backbone in [BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNEST_50,
+                          BackBoneKey.RESNEXT_50, ]:
             mid_channel_ls = [128, 256, 512]
+        elif backbone in [BackBoneKey.RESNET_101, BackBoneKey.RESNET_152,
+                          BackBoneKey.RESNEXT_101, BackBoneKey.RESNEST_101,
+                          BackBoneKey.RESNEST_200, BackBoneKey.RESNEST_269]:
+            mid_channel_ls = [256, 512, 1024]
         else:
             assert False, "Invalid backbone type."
 

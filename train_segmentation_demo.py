@@ -142,9 +142,9 @@ if __name__ == "__main__":
                                         warmup_epochs=0) if not isinstance(model,
                                                                            ShelfNetRealtime) else None
 
-    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
     if args.progress_dir:
-        callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=1, model=model,
+        callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=5, model=model,
                                                            dataset=test_dataset))
     metric_ls = [SegmentationIoUByClasses(dataset_setting.label_names),
                  SegmentationRecallPrecision(dataset_setting.label_names)]

@@ -22,6 +22,7 @@ def build_efficientdet(dataset_setting, args):
     return EfficientDetector(num_classes=dataset_setting.n_classes, lr=args.lr,
                              network=f"efficientdet-d{args.efficientdet_scale}", score_threshold=0.5)
 
+
 #
 # def build_m2det(dataset_setting, args):
 #     return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
@@ -118,9 +119,9 @@ if __name__ == "__main__":
     # Training setting.
     # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
     if args.progress_dir:
-        callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=1,
+        callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=5,
                                                               out_dir=args.progress_dir,
                                                               label_names=dataset_setting.label_names))
     metric_ls = [DetectionIoUByClasses(dataset_setting.label_names), RecallAndPrecision(dataset_setting.label_names)]

@@ -9,6 +9,10 @@ class BackBoneKey(Enum):
     RESNET_152 = "resnet152"
     RESNEXT_50 = "resnext50"
     RESNEXT_101 = "resnext101"
+    RESNEST_50 = "resnest50"
+    RESNEST_101 = "resnest101"
+    RESNEST_200 = "resnest200"
+    RESNEST_269 = "resnest269"
     EFFICIENTNET_B0 = "efficientnet-b0"
     EFFICIENTNET_B1 = "efficientnet-b1"
     EFFICIENTNET_B2 = "efficientnet-b2"
@@ -34,6 +38,10 @@ BACKBONE_CHANNEL_COUNT_DICT = {
     BackBoneKey.RESNET_152: [256, 512, 1024, 2048],
     BackBoneKey.RESNEXT_50: [256, 512, 1024, 2048],
     BackBoneKey.RESNEXT_101: [256, 512, 1024, 2048],
+    BackBoneKey.RESNEST_50: [256, 512, 1024, 2048],
+    BackBoneKey.RESNEST_101: [256, 512, 1024, 2048],
+    BackBoneKey.RESNEST_200: [256, 512, 1024, 2048],
+    BackBoneKey.RESNEST_269: [256, 512, 1024, 2048],
     BackBoneKey.EFFICIENTNET_B0: [16, 24, 40, 80, 112, 192, 320],
     BackBoneKey.EFFICIENTNET_B1: [16, 24, 40, 80, 112, 192, 320],
     BackBoneKey.EFFICIENTNET_B2: [16, 24, 48, 88, 120, 208, 352],
@@ -51,6 +59,10 @@ BACKBONE_DOWNSAMPLING_RATE = {
     BackBoneKey.RESNET_152: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
     BackBoneKey.RESNEXT_50: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
     BackBoneKey.RESNEXT_101: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
+    BackBoneKey.RESNEST_50: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
+    BackBoneKey.RESNEST_101: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
+    BackBoneKey.RESNEST_200: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
+    BackBoneKey.RESNEST_269: [1 / 4, 1 / 8, 1 / 16, 1 / 32],
     BackBoneKey.EFFICIENTNET_B0: [1 / 2, 1 / 4, 1 / 8, 1 / 16, 1 / 32, 1 / 64, 1 / 128],
     BackBoneKey.EFFICIENTNET_B1: [1 / 2, 1 / 4, 1 / 8, 1 / 16, 1 / 32, 1 / 64, 1 / 128],
     BackBoneKey.EFFICIENTNET_B2: [1 / 2, 1 / 4, 1 / 8, 1 / 16, 1 / 32, 1 / 64, 1 / 128],
@@ -62,6 +74,7 @@ BACKBONE_DOWNSAMPLING_RATE = {
 }
 BACKBONE_KEYS = [BackBoneKey.RESNET_18, BackBoneKey.RESNET_34, BackBoneKey.RESNET_50, BackBoneKey.RESNET_101,
                  BackBoneKey.RESNET_152, BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101,
+                 BackBoneKey.RESNEST_50, BackBoneKey.RESNEST_101, BackBoneKey.RESNEST_200, BackBoneKey.RESNEST_269,
                  BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
                  BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
                  BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7]

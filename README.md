@@ -67,6 +67,13 @@ python camera_demo.py --model=attention_branch_network --submodel=resnet18 --n_c
 
 <br/><br/>
 
+## Using models
+- ResNeSt
+    - https://github.com/zhanghang1989/ResNeSt
+- EfficientNet
+    - https://github.com/lukemelas/EfficientNet-PyTorch
+- EfficientDet
+    - https://github.com/toandaominh1997/EfficientDet.Pytorch
 
 ## 学習経過
 <img src="imgs/segmentation_progress.png" width="256" />

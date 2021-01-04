@@ -67,10 +67,12 @@ test_transforms = A.Compose([
 test_transforms = AlbumentationsImageWrapperTransform(test_transforms)
 
 # dataset/dataloader
-train_dataset = CSVAnnotationDataset(image_dir=train_images_dir, annotation_filepath=train_annotation_file_path,
-                                     image_transform=train_transforms)
-test_dataset = CSVAnnotationDataset(image_dir=test_images_dir, annotation_filepath=test_annotation_file_path,
-                                    image_transform=test_transforms)
+train_dataset = CSVAnnotationDataset.create_from_label_val(image_dir=train_images_dir,
+                                                           annotation_csv_filepath=train_annotation_file_path,
+                                                           image_transform=train_transforms)
+test_dataset = CSVAnnotationDataset.create_from_label_val(image_dir=test_images_dir,
+                                                          annotation_csv_filepath=test_annotation_file_path,
+                                                          image_transform=test_transforms)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -83,9 +85,9 @@ if load_weight_path and load_weight_path != "":
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir=saved_weights_dir)]
+callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir)]
 if isinstance(model, AttentionClassificationModel):
-    callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=progress_dir, per_epoch=1,
+    callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=progress_dir, per_epoch=5,
                                                   dataset=test_dataset, label_names=label_names))
 metric_ls = [ClassificationAccuracyByClasses(label_names)]
 metric_for_graph = ClassificationAccuracyByClasses(label_names, val_key=MetricKey.KEY_AVERAGE)

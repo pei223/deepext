@@ -91,8 +91,8 @@ if load_weight_path and load_weight_path != "":
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir=saved_weights_dir),
-             VisualizeRandomObjectDetectionResult(model, image_size, test_dataset, per_epoch=1,
+callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir),
+             VisualizeRandomObjectDetectionResult(model, image_size, test_dataset, per_epoch=5,
                                                   out_dir=progress_dir, label_names=label_names)]
 metric_ls = [DetectionIoUByClasses(label_names), RecallAndPrecision(label_names)]
 metric_for_graph = DetectionIoUByClasses(label_names, val_key=MetricKey.KEY_AVERAGE)

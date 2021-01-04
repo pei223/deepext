@@ -5,9 +5,11 @@ from torch.nn import functional as F
 import torchvision
 
 __all__ = ['FeatureDecoder', 'FeatureMapBackBone', 'create_backbone', 'ClassifierHead',
-           'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', 'EfficientNetBackBone']
+           'ResNetBackBone', 'ResNextBackBone', 'AttentionClassifierBranch', 'EfficientNetBackBone',
+           'ResNeStSubnetwork']
 
 from .efficientnet_subnetwork import EfficientNetFeatureExtractor
+from .resnest_subnetwork import ResNeStSubnetwork
 
 
 class FeatureMapBackBone(nn.Module):
@@ -220,6 +222,9 @@ def create_backbone(backbone_key: BackBoneKey, pretrained=True) -> nn.Module:
         return ResNetBackBone(resnet_type=backbone_key, pretrained=pretrained)
     elif backbone_key in [BackBoneKey.RESNEXT_50, BackBoneKey.RESNEXT_101]:
         return ResNextBackBone(resnext_type=backbone_key, pretrained=pretrained)
+    elif backbone_key in [BackBoneKey.RESNEST_50, BackBoneKey.RESNEST_101,
+                          BackBoneKey.RESNEST_200, BackBoneKey.RESNEST_269]:
+        return ResNeStSubnetwork(resnest_backbone=backbone_key)
     elif backbone_key in [BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,
                           BackBoneKey.EFFICIENTNET_B3, BackBoneKey.EFFICIENTNET_B4, BackBoneKey.EFFICIENTNET_B5,
                           BackBoneKey.EFFICIENTNET_B6, BackBoneKey.EFFICIENTNET_B7, ]:

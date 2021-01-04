@@ -29,8 +29,8 @@ class ClassificationModel(BaseModel):
 
 
 class AttentionClassificationModel(ClassificationModel):
-    def predict_label_and_heatmap(self, img: torch.Tensor or np.ndarray, require_normalize=False) -> Tuple[
-        int, np.ndarray]:
+    def predict_label_and_heatmap(self, img: torch.Tensor or np.ndarray, require_normalize=False, origin_alpha=0.6) -> \
+            Tuple[int, np.ndarray]:
         """
         :param img:
         :param img_size_for_model:
@@ -58,7 +58,7 @@ class AttentionClassificationModel(ClassificationModel):
 
         heatmap_img = cv2.resize((heatmap_img[0] * 255).astype("uint8"), origin_img.shape[:2])
 
-        blended_img = combine_heatmap(origin_img, heatmap_img, origin_alpha=0.5)
+        blended_img = combine_heatmap(origin_img, heatmap_img, origin_alpha=origin_alpha)
         return label_array[0].argmax(), blended_img
 
     @abstractmethod

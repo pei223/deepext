@@ -85,8 +85,8 @@ if load_weight_path and load_weight_path != "":
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir=saved_weights_dir),
-             GenerateSegmentationImageCallback(output_dir=progress_dir, per_epoch=1, model=model,
+callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir),
+             GenerateSegmentationImageCallback(output_dir=progress_dir, per_epoch=5, model=model,
                                                dataset=test_dataset)]
 metric_ls = [SegmentationIoUByClasses(label_names), SegmentationRecallPrecision(label_names)]
 metric_for_graph = SegmentationIoUByClasses(label_names, val_key=MetricKey.KEY_AVERAGE)

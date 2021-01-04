@@ -120,10 +120,10 @@ if __name__ == "__main__":
     # Training setting.
     # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    callbacks = [ModelCheckout(per_epoch=10, model=model, our_dir="saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):
-            callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=1,
+            callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=5,
                                                           dataset=test_dataset,
                                                           label_names=dataset_setting.label_names))
     metric_ls = [ClassificationAccuracyByClasses(dataset_setting.label_names), ]
