@@ -1,16 +1,37 @@
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 from pathlib import Path
 from PIL import Image
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 
 
-def random_subset_dataset(dataset: Dataset, ratio: float):
-    data_len = len(dataset)
-    subset_count = int(data_len * ratio)
-    subset_indices = np.random.permutation(data_len)[:subset_count]
-    return Subset(dataset, indices=subset_indices)
+def create_filepath_ls(image_dir_path: str, valid_suffixes: List[str] = None) -> List[str]:
+    valid_suffixes = valid_suffixes or ["*.png", "*.jpg", "*.jpeg", "*.bmp"]
+    image_path_ls = []
+    image_dir = Path(image_dir_path)
+    for suffix in valid_suffixes:
+        image_path_ls += list(image_dir.glob(suffix))
+    image_path_ls.sort()
+    return image_path_ls
+
+
+def split_train_test_indices(data_len: int, test_ratio: float) -> Tuple[np.ndarray, np.ndarray]:
+    test_num = int(data_len * test_ratio)
+    train_num = data_len - test_num
+    indices = np.random.permutation(data_len)
+    train_indices = indices[:train_num]
+    test_indices = indices[train_indices:]
+    return train_indices, test_indices
+
+
+def split_k_fold_indices(data_len: int, k: int) -> List[np.ndarray]:
+    all_indices = np.random.permutation(data_len)
+    result = []
+    block_data_num = int(data_len / k)
+    for i in range(k):
+        result.append(all_indices[block_data_num * i:block_data_num * i + 1])
+    return result
 
 
 class ImageOnlyDataset(Dataset):

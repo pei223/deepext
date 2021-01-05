@@ -67,12 +67,12 @@ test_transforms = A.Compose([
 test_transforms = AlbumentationsImageWrapperTransform(test_transforms)
 
 # dataset/dataloader
-train_dataset = CSVAnnotationDataset.create_from_label_val(image_dir=train_images_dir,
-                                                           annotation_csv_filepath=train_annotation_file_path,
-                                                           image_transform=train_transforms)
-test_dataset = CSVAnnotationDataset.create_from_label_val(image_dir=test_images_dir,
-                                                          annotation_csv_filepath=test_annotation_file_path,
-                                                          image_transform=test_transforms)
+train_dataset = CSVAnnotationDataset.create(image_dir=train_images_dir,
+                                            annotation_csv_filepath=train_annotation_file_path,
+                                            image_transform=train_transforms)
+test_dataset = CSVAnnotationDataset.create(image_dir=test_images_dir,
+                                           annotation_csv_filepath=test_annotation_file_path,
+                                           image_transform=test_transforms)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -96,6 +96,9 @@ learning_curve_visualizer = LearningCurveVisualizer(metric_name="Accuracy", igno
                                                     save_filepath="classification_learning_curve.png")
 
 # Training.
-Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                   epochs=epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler, metric_ls=metric_ls,
-                   calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)
+Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
+                                                                        test_dataloader=test_dataloader,
+                                                                        epochs=epoch, callbacks=callbacks,
+                                                                        lr_scheduler_func=lr_scheduler,
+                                                                        metric_ls=metric_ls,
+                                                                        calc_metrics_per_epoch=5)

@@ -1,25 +1,80 @@
 from collections import OrderedDict
-from typing import Dict
+from typing import Dict, Tuple, List
 from warnings import warn
 from torch.utils.data import Dataset
 import csv
 from PIL import Image
 from pathlib import Path
+import numpy as np
 
 
 class CSVAnnotationDataset(Dataset):
     @staticmethod
-    def create_from_label_val(image_dir: str, annotation_csv_filepath: str, image_transform,
-                              label_transform=None) -> 'CSVAnnotationDataset':
+    def k_fold_generator(k_indices_ls: List[np.ndarray],
+                         images_dir: str, annotation_csv_filepath: str,
+                         train_image_transform, test_image_transform, train_label_transform=None,
+                         test_label_transform=None, label_dict: Dict[str, int] = None):
+        assert len(k_indices_ls) >= 2
+        for i in range(len(k_indices_ls) - 1):
+            train_indices = k_indices_ls[i]
+            test_indices = k_indices_ls[i + 1]
+            train_dataset, test_dataset = CSVAnnotationDataset.create_train_test(train_indices, test_indices,
+                                                                                 images_dir, annotation_csv_filepath,
+                                                                                 train_image_transform,
+                                                                                 test_image_transform,
+                                                                                 train_label_transform,
+                                                                                 test_label_transform,
+                                                                                 label_dict)
+            yield train_dataset, test_dataset
+
+    @staticmethod
+    def create_train_test(train_indices: np.ndarray, test_indices: np.ndarray,
+                          images_dir: str, annotation_csv_filepath: str,
+                          train_image_transform, test_image_transform, train_label_transform=None,
+                          test_label_transform=None, label_dict: Dict[str, int] = None) -> Tuple[Dataset, Dataset]:
+        assert train_indices.ndim == 1 and test_indices.ndim == 1
+        filename_label_dict = CSVAnnotationDataset._create_filename_label_dict(annotation_csv_filepath, label_dict)
+        filename_ls = list(filename_label_dict.keys())
+
+        train_filename_label_dict, test_filename_label_dict = OrderedDict(), OrderedDict()
+
+        for idx in train_indices:
+            filepath = filename_ls[idx]
+            label = filename_label_dict[filepath]
+            train_filename_label_dict[filepath] = label
+        for idx in test_indices:
+            filepath = filename_ls[idx]
+            label = filename_label_dict[filepath]
+            test_filename_label_dict[filepath] = label
+        train_dataset = CSVAnnotationDataset(image_dir=images_dir,
+                                             image_transform=train_image_transform,
+                                             label_transform=train_label_transform,
+                                             filename_label_dict=train_filename_label_dict)
+        test_dataset = CSVAnnotationDataset(image_dir=images_dir,
+                                            image_transform=test_image_transform,
+                                            label_transform=test_label_transform,
+                                            filename_label_dict=test_filename_label_dict)
+        return train_dataset, test_dataset
+
+    @staticmethod
+    def create(image_dir: str, annotation_csv_filepath: str, image_transform,
+               label_transform=None, label_dict: Dict[str, int] = None) -> 'CSVAnnotationDataset':
         """
         Create dataset from CSV file.
-        CSV column 2 must be integer(label value).
-        :param image_dir: 
+        If CSV column 2 value is string, required label_dict arg.
+        :param label_dict:
+        :param image_dir:
         :param annotation_csv_filepath: 
         :param image_transform:
         :param label_transform: 
         :return: 
         """
+        filename_label_dict = CSVAnnotationDataset._create_filename_label_dict(annotation_csv_filepath, label_dict)
+        return CSVAnnotationDataset(image_dir, filename_label_dict=filename_label_dict, image_transform=image_transform,
+                                    label_transform=label_transform)
+
+    @staticmethod
+    def _create_filename_label_dict(annotation_csv_filepath: str, label_dict: Dict[str, int] = None) -> OrderedDict:
         filename_label_dict = OrderedDict()
         with open(annotation_csv_filepath, "r") as file:
             reader = csv.reader(file)
@@ -27,37 +82,16 @@ class CSVAnnotationDataset(Dataset):
                 filename = Path(row[0]).name
                 label = row[1]
                 if not label.isdigit():
-                    warn(f"invalid label: {row}")
+                    if label_dict is None:
+                        raise RuntimeError("Required dict transform label name to class number.")
+                    label_num = label_dict.get(label)
+                    if label_num is None:
+                        warn(f"Invalid label name: {label},  {row}")
+                        continue
+                    filename_label_dict[filename] = label_num
                     continue
                 filename_label_dict[filename] = int(label)
-        return CSVAnnotationDataset(image_dir, filename_label_dict=filename_label_dict, image_transform=image_transform,
-                                    label_transform=label_transform)
-
-    @staticmethod
-    def create_from_label_name(image_dir: str, annotation_csv_filepath: str, label_dict: Dict[str, int], image_transform,
-                               label_transform=None) -> 'CSVAnnotationDataset':
-        """
-        Create dataset from CSV file.
-        CSV column 2 must be str(label name).
-        :param label_dict: Key is label name(string). Value is label value(integer).
-        :param image_dir: 
-        :param annotation_csv_filepath: 
-        :param image_transform: 
-        :param label_transform: 
-        :return: 
-        """
-        filename_label_dict = OrderedDict()
-        with open(annotation_csv_filepath, "r") as file:
-            reader = csv.reader(file)
-            for row in reader:
-                filename = Path(row[0]).name
-                label = label_dict.get(row[1])
-                if label is None:
-                    warn(f"invalid label: {row}")
-                    continue
-                filename_label_dict[filename] = label
-        return CSVAnnotationDataset(image_dir, filename_label_dict=filename_label_dict, image_transform=image_transform,
-                                    label_transform=label_transform)
+        return filename_label_dict
 
     def __init__(self, image_dir: str, filename_label_dict: OrderedDict, image_transform,
                  label_transform=None):

@@ -1,16 +1,19 @@
 from typing import List, Union, Dict, Tuple
+from warnings import warn
+
 from torch.utils.data import Dataset
 import numpy as np
 import torch
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from PIL import Image
+from .common import create_filepath_ls
 
 
 class AdjustDetectionTensorCollator:
     """
     N * 5(x_min, y_min, x_max, y_max, class label)の1アノテーションデータをTensorに変換する.
-    すべてのBounding boxを0・-1埋めで固定長にする.
+    すべてのBounding boxを-1埋めで固定長にする.
     """
 
     def __init__(self, padding_val=-1):
@@ -72,44 +75,75 @@ class VOCAnnotationTransform:
                 bbox.append(coordinate)
             class_index = self._class_index_dict.get(class_name)
             if class_index is None or class_name in self._ignore_labels:  # Except not exist class.
+                warn(f"Invalid class name: {class_name}")
                 continue
             result.append(bbox + [class_index, ])
         return result
 
 
 class VOCDataset(Dataset):
-    def __init__(self, image_dir_path: str, annotation_dir_path: str, transforms, class_index_dict: Dict[str, int],
-                 valid_suffixes: List[str] = None):
-        """
-        :param image_dir_path: Directory path of images.
-        :param annotation_dir_path: Directory path of VOC format XML files.
-        :param transforms: LabelAndDataTransforms or Albumentations.Compose
-        :param class_index_dict: {Class name: Class label num, ...}
-        :param valid_suffixes:
-        """
-        self.transforms = transforms
-        image_dir = Path(image_dir_path)
+    @staticmethod
+    def k_fold_generator(k_indices_ls: List[np.ndarray],
+                         image_dir_path: str,
+                         annotation_dir_path: str, train_transforms, test_transforms,
+                         class_index_dict: Dict[str, int],
+                         valid_suffixes: List[str] = None):
+        assert len(k_indices_ls) >= 2
+        for i in range(len(k_indices_ls) - 1):
+            train_indices = k_indices_ls[i]
+            test_indices = k_indices_ls[i + 1]
+            train_dataset, test_dataset = VOCDataset.create_train_test(train_indices, test_indices,
+                                                                       image_dir_path, annotation_dir_path,
+                                                                       train_transforms, test_transforms,
+                                                                       class_index_dict, valid_suffixes)
+            yield train_dataset, test_dataset
 
-        self._voc_transform = VOCAnnotationTransform(class_index_dict=class_index_dict, size=None)
+    @staticmethod
+    def create_train_test(train_indices: np.ndarray, test_indices: np.ndarray, image_dir_path: str,
+                          annotation_dir_path: str, train_transforms, test_transforms,
+                          class_index_dict: Dict[str, int],
+                          valid_suffixes: List[str] = None) -> Tuple[Dataset, Dataset]:
+        image_path_ls = create_filepath_ls(image_dir_path, valid_suffixes)
+        train_image_path_ls, test_image_path_ls = [], []
+        for idx in train_indices:
+            train_image_path_ls.append(image_path_ls[idx])
+        for idx in test_indices:
+            test_image_path_ls.append(image_path_ls[idx])
+        train_dataset = VOCDataset(image_filename_ls=train_image_path_ls,
+                                   image_dir_path=image_dir_path,
+                                   annotation_dir_path=annotation_dir_path,
+                                   transform=train_transforms, class_index_dict=class_index_dict)
+        test_dataset = VOCDataset(image_filename_ls=test_image_path_ls,
+                                  image_dir_path=image_dir_path,
+                                  annotation_dir_path=annotation_dir_path,
+                                  transform=test_transforms, class_index_dict=class_index_dict)
+        return train_dataset, test_dataset
 
-        if valid_suffixes is None:
-            valid_suffixes = ["*.png", "*.jpg", "*.jpeg", "*.bmp"]
-        self.image_path_ls = []
-        for suffix in valid_suffixes:
-            self.image_path_ls += list(image_dir.glob(suffix))
+    @staticmethod
+    def create(image_dir_path: str, annotation_dir_path: str, transforms, class_index_dict: Dict[str, int],
+               valid_suffixes: List[str] = None):
+        image_path_ls = create_filepath_ls(image_dir_path, valid_suffixes)
+        return VOCDataset(image_path_ls, image_dir_path, annotation_dir_path, class_index_dict, transforms)
 
-        self.annotation_dir = Path(annotation_dir_path)
-        self.image_path_ls.sort()
+    def __init__(self, image_filename_ls: List[str], image_dir_path: str, annotation_dir_path: str,
+                 class_index_dict: Dict[str, int], transform):
+        self._image_dir = Path(image_dir_path)
+        self._annotation_dir = Path(annotation_dir_path)
+        self._class_index_dict = class_index_dict
+        self._image_filename_ls = image_filename_ls
+        self._transform = transform
+        self._voc_transform = VOCAnnotationTransform(class_index_dict)
 
     def __getitem__(self, idx: int):
-        image_path = self.image_path_ls[idx]
-        image = Image.open(str(image_path)).convert("RGB")
+        image_name = self._image_filename_ls[idx]
+        image_path = self._image_dir.joinpath(image_name)
+        annotation_path = self._annotation_dir.joinpath(f"{Path(image_name).stem}.xml")
 
-        annotation_path = self.annotation_dir.joinpath(f"{image_path.stem}.xml")
+        image = Image.open(str(image_path)).convert("RGB")
         annotation_node = ET.parse(str(annotation_path)).getroot()
         annotation = self._voc_transform(annotation_node)
 
-        return self.transforms(image, annotation)
+        return self._transform(image, annotation)
 
     def __len__(self):
-        return len(self.image_path_ls)
+        return len(self._image_filename_ls)

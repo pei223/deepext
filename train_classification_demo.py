@@ -9,7 +9,7 @@ from deepext.models.classification import EfficientNet, MobileNetV3, \
     AttentionBranchNetwork
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
-from deepext.trainer.callbacks import GenerateAttentionMapCallback, ModelCheckout
+from deepext.trainer.callbacks import GenerateAttentionMapCallback, ModelCheckout, CSVClassificationResultCallback
 from deepext.metrics.classification import *
 from deepext.metrics import MetricKey
 from deepext.utils import *
@@ -118,9 +118,11 @@ if __name__ == "__main__":
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
     # Training setting.
-    # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
+    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights"),
+                 CSVClassificationResultCallback(model=model, per_epoch=args.epoch, dataset=test_dataset,
+                                                 label_names=dataset_setting.label_names,
+                                                 out_filepath=f"{args.progress_dir}/result.csv")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):
             callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=5,
@@ -132,7 +134,9 @@ if __name__ == "__main__":
                                                         metric_for_graph=metric_for_graph,
                                                         save_filepath="classification_learning_curve.png")
     # Training.
-    Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                       epochs=args.epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler,
-                       metric_ls=metric_ls, calc_metrics_per_epoch=5,
-                       learning_curve_visualizer=learning_curve_visualizer)
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
+                                                                            test_dataloader=test_dataloader,
+                                                                            epochs=args.epoch, callbacks=callbacks,
+                                                                            lr_scheduler_func=lr_scheduler,
+                                                                            metric_ls=metric_ls,
+                                                                            calc_metrics_per_epoch=5)

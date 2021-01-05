@@ -69,10 +69,10 @@ test_transforms = AlbumentationsSegmentationWrapperTransform(test_transforms, cl
                                                              ignore_indices=ignore_indices)
 
 # dataset/dataloader
-train_dataset = IndexImageDataset(image_dir_path=train_images_dir, index_image_dir_path=train_annotations_dir,
-                                  transforms=train_transforms)
-test_dataset = IndexImageDataset(image_dir_path=test_images_dir, index_image_dir_path=test_annotations_dir,
-                                 transforms=test_transforms)
+train_dataset = IndexImageDataset.create(image_dir_path=train_images_dir, index_image_dir_path=train_annotations_dir,
+                                         transforms=train_transforms)
+test_dataset = IndexImageDataset.create(image_dir_path=test_images_dir, index_image_dir_path=test_annotations_dir,
+                                        transforms=test_transforms)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -95,6 +95,9 @@ learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_e
                                                     save_filepath="segmentation_learning_curve.png")
 
 # Training.
-Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                   epochs=epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler, metric_ls=metric_ls,
-                   calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)
+Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
+                                                                        test_dataloader=test_dataloader,
+                                                                        epochs=epoch, callbacks=callbacks,
+                                                                        lr_scheduler_func=lr_scheduler,
+                                                                        metric_ls=metric_ls,
+                                                                        calc_metrics_per_epoch=5)

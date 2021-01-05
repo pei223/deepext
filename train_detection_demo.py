@@ -117,7 +117,6 @@ if __name__ == "__main__":
                                                                                     args.batch_size)
 
     # Training setting.
-    # lr_scheduler = LearningRateScheduler(base_lr=args.lr, max_epoch=args.epoch, power=.9)
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
     callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
     if args.progress_dir:
@@ -130,6 +129,9 @@ if __name__ == "__main__":
                                                         metric_for_graph=metric_for_graph,
                                                         save_filepath="detection_learning_curve.png")
     # Training.
-    Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader, epochs=args.epoch,
-                       callbacks=callbacks, metric_ls=metric_ls, lr_scheduler_func=lr_scheduler,
-                       calc_metrics_per_epoch=10, learning_curve_visualizer=learning_curve_visualizer)
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
+                                                                            test_dataloader=test_dataloader,
+                                                                            epochs=args.epoch,
+                                                                            callbacks=callbacks, metric_ls=metric_ls,
+                                                                            lr_scheduler_func=lr_scheduler,
+                                                                            calc_metrics_per_epoch=10)

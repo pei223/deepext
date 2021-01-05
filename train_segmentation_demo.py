@@ -136,8 +136,6 @@ if __name__ == "__main__":
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
     # Training setting.
-    # lr_scheduler = LearningRateScheduler(max_epoch=args.epoch, base_lr=args.lr) if not isinstance(model,
-    #                                                                                               ShelfNetRealtime) else None
     lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch,
                                         warmup_epochs=0) if not isinstance(model,
                                                                            ShelfNetRealtime) else None
@@ -154,6 +152,9 @@ if __name__ == "__main__":
                                                         save_filepath="segmentation_learning_curve.png")
 
     # Training.
-    Trainer(model).fit(data_loader=train_dataloader, test_dataloader=test_dataloader,
-                       epochs=args.epoch, callbacks=callbacks, lr_scheduler_func=lr_scheduler, metric_ls=metric_ls,
-                       calc_metrics_per_epoch=5, learning_curve_visualizer=learning_curve_visualizer)
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
+                                                                            test_dataloader=test_dataloader,
+                                                                            epochs=args.epoch, callbacks=callbacks,
+                                                                            lr_scheduler_func=lr_scheduler,
+                                                                            metric_ls=metric_ls,
+                                                                            calc_metrics_per_epoch=5)
