@@ -1,10 +1,14 @@
+from typing import Tuple
+import numpy as np
+
+import torch.nn as nn
+import torch.nn.functional as F
+import torch
+
 from ..base import AttentionClassificationModel
 from ...layers.backbone_key import BackBoneKey, BACKBONE_CHANNEL_COUNT_DICT
-from ...layers.subnetwork import *
-from ...layers.block import *
-from ...layers.basic import *
-from ...utils import *
-import torch
+from ...layers.subnetwork import create_backbone, ClassifierHead, AttentionClassifierBranch
+from ...utils import try_cuda
 
 __all__ = ['AttentionBranchNetwork']
 

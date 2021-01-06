@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Generator
 from warnings import warn
 from torch.utils.data import Dataset
 import csv
@@ -7,33 +7,23 @@ from PIL import Image
 from pathlib import Path
 import numpy as np
 
+from .dataset_factory import MultipleDatasetFactory
 
-class CSVAnnotationDataset(Dataset):
-    @staticmethod
-    def k_fold_generator(k_indices_ls: List[np.ndarray],
-                         images_dir: str, annotation_csv_filepath: str,
-                         train_image_transform, test_image_transform, train_label_transform=None,
-                         test_label_transform=None, label_dict: Dict[str, int] = None):
-        assert len(k_indices_ls) >= 2
-        for i in range(len(k_indices_ls) - 1):
-            train_indices = k_indices_ls[i]
-            test_indices = k_indices_ls[i + 1]
-            train_dataset, test_dataset = CSVAnnotationDataset.create_train_test(train_indices, test_indices,
-                                                                                 images_dir, annotation_csv_filepath,
-                                                                                 train_image_transform,
-                                                                                 test_image_transform,
-                                                                                 train_label_transform,
-                                                                                 test_label_transform,
-                                                                                 label_dict)
-            yield train_dataset, test_dataset
 
-    @staticmethod
-    def create_train_test(train_indices: np.ndarray, test_indices: np.ndarray,
-                          images_dir: str, annotation_csv_filepath: str,
-                          train_image_transform, test_image_transform, train_label_transform=None,
-                          test_label_transform=None, label_dict: Dict[str, int] = None) -> Tuple[Dataset, Dataset]:
-        assert train_indices.ndim == 1 and test_indices.ndim == 1
-        filename_label_dict = CSVAnnotationDataset._create_filename_label_dict(annotation_csv_filepath, label_dict)
+class CSVAnnotationMultiDatasetFactory(MultipleDatasetFactory):
+    def __init__(self,
+                 images_dir: str, annotation_csv_filepath: str,
+                 train_image_transform, test_image_transform, train_label_transform=None,
+                 test_label_transform=None, label_dict: Dict[str, int] = None):
+        self._images_dir = images_dir
+        self._annotation_csv_filepath = annotation_csv_filepath
+        self._train_img_transform, self._test_img_transform = train_image_transform, test_image_transform
+        self._train_label_transform, self._test_label_transform = train_label_transform, test_label_transform
+        self._label_dict = label_dict
+
+    def create_train_test(self, train_indices: np.ndarray, test_indices: np.ndarray) -> Tuple[Dataset, Dataset]:
+        filename_label_dict = CSVAnnotationDataset.create_filename_label_dict(self._annotation_csv_filepath,
+                                                                              self._label_dict)
         filename_ls = list(filename_label_dict.keys())
 
         train_filename_label_dict, test_filename_label_dict = OrderedDict(), OrderedDict()
@@ -46,16 +36,25 @@ class CSVAnnotationDataset(Dataset):
             filepath = filename_ls[idx]
             label = filename_label_dict[filepath]
             test_filename_label_dict[filepath] = label
-        train_dataset = CSVAnnotationDataset(image_dir=images_dir,
-                                             image_transform=train_image_transform,
-                                             label_transform=train_label_transform,
+        train_dataset = CSVAnnotationDataset(image_dir=self._images_dir,
+                                             image_transform=self._train_img_transform,
+                                             label_transform=self._train_label_transform,
                                              filename_label_dict=train_filename_label_dict)
-        test_dataset = CSVAnnotationDataset(image_dir=images_dir,
-                                            image_transform=test_image_transform,
-                                            label_transform=test_label_transform,
+        test_dataset = CSVAnnotationDataset(image_dir=self._images_dir,
+                                            image_transform=self._test_img_transform,
+                                            label_transform=self._test_label_transform,
                                             filename_label_dict=test_filename_label_dict)
         return train_dataset, test_dataset
 
+    def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset]]:
+        for i in range(len(k_indices_ls) - 1):
+            train_indices = k_indices_ls[i]
+            test_indices = k_indices_ls[i + 1]
+            train_dataset, test_dataset = self.create_train_test(train_indices, test_indices)
+            yield train_dataset, test_dataset
+
+
+class CSVAnnotationDataset(Dataset):
     @staticmethod
     def create(image_dir: str, annotation_csv_filepath: str, image_transform,
                label_transform=None, label_dict: Dict[str, int] = None) -> 'CSVAnnotationDataset':
@@ -69,12 +68,12 @@ class CSVAnnotationDataset(Dataset):
         :param label_transform: 
         :return: 
         """
-        filename_label_dict = CSVAnnotationDataset._create_filename_label_dict(annotation_csv_filepath, label_dict)
+        filename_label_dict = CSVAnnotationDataset.create_filename_label_dict(annotation_csv_filepath, label_dict)
         return CSVAnnotationDataset(image_dir, filename_label_dict=filename_label_dict, image_transform=image_transform,
                                     label_transform=label_transform)
 
     @staticmethod
-    def _create_filename_label_dict(annotation_csv_filepath: str, label_dict: Dict[str, int] = None) -> OrderedDict:
+    def create_filename_label_dict(annotation_csv_filepath: str, label_dict: Dict[str, int] = None) -> OrderedDict:
         filename_label_dict = OrderedDict()
         with open(annotation_csv_filepath, "r") as file:
             reader = csv.reader(file)

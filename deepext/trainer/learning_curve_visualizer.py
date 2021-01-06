@@ -50,3 +50,4 @@ class LearningCurveVisualizer:
         plt.savefig(self._save_filepath)
         plt.cla()
         plt.clf()
+        plt.close()
