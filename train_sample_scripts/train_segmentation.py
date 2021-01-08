@@ -89,14 +89,14 @@ callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_
              GenerateSegmentationImageCallback(output_dir=progress_dir, per_epoch=5, model=model,
                                                dataset=test_dataset)]
 metric_ls = [SegmentationIoUByClasses(label_names), SegmentationRecallPrecision(label_names)]
-metric_for_graph = SegmentationIoUByClasses(label_names, val_key=MetricKey.KEY_AVERAGE)
+metric_for_graph = SegmentationIoUByClasses(label_names, val_key=DetailMetricKey.KEY_AVERAGE)
 learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
                                                     metric_for_graph=metric_for_graph,
                                                     save_filepath="segmentation_learning_curve.png")
 
 # Training.
-Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
-                                                                        test_dataloader=test_dataloader,
+Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
+                                                                        test_data_loader=test_dataloader,
                                                                         epochs=epoch, callbacks=callbacks,
                                                                         lr_scheduler_func=lr_scheduler,
                                                                         metric_ls=metric_ls,

@@ -13,3 +13,14 @@ class MultipleDatasetFactory(metaclass=ABCMeta):
     @abstractmethod
     def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset]]:
         pass
+
+    def split_kfold_train_test_indices(self, k_indices_ls: List[np.ndarray], test_order: int) -> Tuple[
+        np.ndarray, np.ndarray]:
+        train_indices = np.array([])
+        test_indices = None
+        for i, indices in enumerate(k_indices_ls):
+            if i == test_order:
+                test_indices = indices
+                continue
+            train_indices = np.concatenate([train_indices, indices])
+        return train_indices, test_indices

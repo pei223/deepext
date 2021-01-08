@@ -1,18 +1,19 @@
 from collections import OrderedDict
-from typing import List
+from typing import List, Dict, Tuple
 
 import numpy as np
 import torch
 
 from .base_metrics import BaseMetrics
-from .keys import MetricKey
+from .keys import DetailMetricKey, MainMetricKey
 
 
 class SegmentationAccuracyByClasses(BaseMetrics):
-    def __init__(self, label_names: List[str], val_key: MetricKey = None):
-        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE,
-                                              MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND]
-        self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
+    def __init__(self, label_names: List[str],
+                 val_key: DetailMetricKey = DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND):
+        assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE,
+                           DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND]
+        self.label_names = [DetailMetricKey.KEY_BACKGROUND.value, ] + label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
@@ -23,10 +24,10 @@ class SegmentationAccuracyByClasses(BaseMetrics):
         :param teacher: (Batch size, classes, height, width)
         """
         pred = torch.from_numpy(pred)
-        if isinstance(teacher, torch.Tensor):
-            teacher = teacher.cpu().numpy()
-        if isinstance(pred, torch.Tensor):
-            pred = pred.cpu().numpy()
+
+        teacher = teacher.cpu().numpy() if isinstance(teacher, torch.Tensor) else teacher
+        pred = pred.cpu().numpy() if isinstance(pred, torch.Tensor) else pred
+
         assert pred.ndim == 4 and teacher.ndim == 4
         assert pred.shape[-1] == teacher.shape[-1] and pred.shape[-2] == teacher.shape[-2], "教師データと推論結果のサイズは同じにしてください"
 
@@ -43,7 +44,7 @@ class SegmentationAccuracyByClasses(BaseMetrics):
                 self.correct_by_classes[label] += correct
                 self.incorrect_by_classes[label] += incorrect
 
-    def calc_summary(self):
+    def calc_summary(self) -> Tuple[float, Dict[str, float]]:
         result = OrderedDict()
         total_correct, total_incorrect = 0, 0
         avg_acc = 0.0
@@ -53,24 +54,37 @@ class SegmentationAccuracyByClasses(BaseMetrics):
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
-        result[MetricKey.KEY_AVERAGE.value] = avg_acc / len(self.label_names)
-        result[MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_acc - result[MetricKey.KEY_BACKGROUND.value]) / (
-                len(self.label_names) - 1)
-        result[MetricKey.KEY_TOTAL.value] = total_correct / (total_correct + total_incorrect)
-        if self._val_key:
-            return result[self._val_key.value]
-        return list(result.items())
+        result[DetailMetricKey.KEY_AVERAGE.value] = avg_acc / len(self.label_names)
+        result[DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_acc - result[
+            DetailMetricKey.KEY_BACKGROUND.value]) / (
+                                                                               len(self.label_names) - 1)
+        result[DetailMetricKey.KEY_TOTAL.value] = total_correct / (total_correct + total_incorrect)
+        return result[self._val_key.value], result
 
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
+    def add(self, other: 'SegmentationAccuracyByClasses'):
+        if not isinstance(other, SegmentationAccuracyByClasses):
+            raise RuntimeError(f"Bad class type. expected: {SegmentationAccuracyByClasses.__name__}")
+        if len(self.label_names) != len(other.label_names):
+            raise RuntimeError(
+                f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        for i in range(len(self.correct_by_classes)):
+            self.correct_by_classes[i] += other.correct_by_classes[i]
+            self.incorrect_by_classes[i] += other.incorrect_by_classes[i]
+
+    def div(self, num: int):
+        pass
+
 
 class SegmentationIoUByClasses(BaseMetrics):
-    def __init__(self, label_names: List[str], val_key: MetricKey = None):
-        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE,
-                                              MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND]
-        self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
+    def __init__(self, label_names: List[str],
+                 val_key: DetailMetricKey = DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND):
+        assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE,
+                           DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND]
+        self.label_names = [DetailMetricKey.KEY_BACKGROUND.value, ] + label_names
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
@@ -101,7 +115,7 @@ class SegmentationIoUByClasses(BaseMetrics):
                 self.overlap_by_classes[label] += overlap
                 self.union_by_classes[label] += union
 
-    def calc_summary(self):
+    def calc_summary(self) -> Tuple[float, Dict[str, float]]:
         result = OrderedDict()
         total_overlap, total_union = 0, 0
         avg_iou = 0.0
@@ -111,30 +125,43 @@ class SegmentationIoUByClasses(BaseMetrics):
             total_overlap += overlap
             total_union += union
             avg_iou += result[label_name]
-        result[MetricKey.KEY_AVERAGE.value] = avg_iou / len(self.label_names)
-        result[MetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_iou - result[MetricKey.KEY_BACKGROUND.value]) / (
-                len(self.label_names) - 1)
-        result[MetricKey.KEY_TOTAL.value] = total_overlap / total_union if total_union > 0 else 0
-        if self._val_key:
-            return result[self._val_key.value]
-        return list(result.items())
+        result[DetailMetricKey.KEY_AVERAGE.value] = avg_iou / len(self.label_names)
+        result[DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND.value] = (avg_iou - result[
+            DetailMetricKey.KEY_BACKGROUND.value]) / (
+                                                                               len(self.label_names) - 1)
+        result[DetailMetricKey.KEY_TOTAL.value] = total_overlap / total_union if total_union > 0 else 0
+        return result[self._val_key.value], result
 
     def clear(self):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
 
+    def add(self, other: 'SegmentationIoUByClasses'):
+        if not isinstance(other, SegmentationIoUByClasses):
+            raise RuntimeError(f"Bad class type. expected: {SegmentationIoUByClasses.__name__}")
+        if len(self.label_names) != len(other.label_names):
+            raise RuntimeError(
+                f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        for i in range(len(self.overlap_by_classes)):
+            self.overlap_by_classes[i] += other.overlap_by_classes[i]
+            self.union_by_classes[i] += other.union_by_classes[i]
+
+    def div(self, num: int):
+        pass
+
 
 class SegmentationRecallPrecision(BaseMetrics):
-    def __init__(self, label_names: List[str], main_val_key: MetricKey = None, sub_val_key: MetricKey = None):
-        self.label_names = [MetricKey.KEY_BACKGROUND.value, ] + label_names
+    def __init__(self, label_names: List[str], main_val_key: MainMetricKey = MainMetricKey.KEY_F_SCORE,
+                 sub_val_key: DetailMetricKey = DetailMetricKey.KEY_TOTAL):
+        assert self._main_val_key in [MainMetricKey.KEY_RECALL, MainMetricKey.KEY_PRECISION,
+                                      MainMetricKey.KEY_F_SCORE]
+        assert self._sub_val_key in [DetailMetricKey.KEY_AVERAGE, DetailMetricKey.KEY_TOTAL]
+        self.label_names = [DetailMetricKey.KEY_BACKGROUND.value, ] + label_names
         self.tp_by_classes = [0 for _ in range(len(self.label_names))]
         self.tp_fp_by_classes = [0 for _ in range(len(self.label_names))]
         self.tp_fn_by_classes = [0 for _ in range(len(self.label_names))]
         self._main_val_key = main_val_key
         self._sub_val_key = sub_val_key
-        assert self._main_val_key is None or self._main_val_key in [MetricKey.KEY_RECALL, MetricKey.KEY_PRECISION,
-                                                                    MetricKey.KEY_F_SCORE]
-        assert self._sub_val_key is None or self._sub_val_key in [MetricKey.KEY_AVERAGE, MetricKey.KEY_TOTAL]
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -163,7 +190,7 @@ class SegmentationRecallPrecision(BaseMetrics):
                 self.tp_fp_by_classes[label] += tp_fp
                 self.tp_fn_by_classes[label] += tp_fn
 
-    def calc_summary(self) -> any:
+    def calc_summary(self) -> Tuple[float, Dict[str, float]]:
         recall_dict, precision_dict, f_score_dict = OrderedDict(), OrderedDict(), OrderedDict()
         total_tp, total_tp_fp, total_tp_fn = 0, 0, 0
         for i, label_name in enumerate(self.label_names):
@@ -180,31 +207,41 @@ class SegmentationRecallPrecision(BaseMetrics):
             total_tp_fp += tp_fp
             total_tp_fn += tp_fn
 
-        recall_dict[MetricKey.KEY_AVERAGE.value] = sum(recall_dict.values()) / len(self.label_names)
-        precision_dict[MetricKey.KEY_AVERAGE.value] = sum(precision_dict.values()) / len(self.label_names)
-        f_score_dict[MetricKey.KEY_AVERAGE.value] = sum(f_score_dict.values()) / len(self.label_names)
+        recall_dict[DetailMetricKey.KEY_AVERAGE.value] = sum(recall_dict.values()) / len(self.label_names)
+        precision_dict[DetailMetricKey.KEY_AVERAGE.value] = sum(precision_dict.values()) / len(self.label_names)
+        f_score_dict[DetailMetricKey.KEY_AVERAGE.value] = sum(f_score_dict.values()) / len(self.label_names)
 
         total_recall = total_tp / (total_tp_fn) if total_tp_fn > 0 else 0
         total_precision = total_tp / (total_tp_fp) if total_tp_fp > 0 else 0
         total_f_score = (2 * total_recall * total_precision) / (
                 total_recall + total_precision) if total_recall + total_precision > 0 else 0
 
-        recall_dict[MetricKey.KEY_TOTAL.value] = total_recall
-        precision_dict[MetricKey.KEY_TOTAL.value] = total_precision
-        f_score_dict[MetricKey.KEY_TOTAL.value] = total_f_score
+        recall_dict[DetailMetricKey.KEY_TOTAL.value] = total_recall
+        precision_dict[DetailMetricKey.KEY_TOTAL.value] = total_precision
+        f_score_dict[DetailMetricKey.KEY_TOTAL.value] = total_f_score
 
         result = {
-            MetricKey.KEY_RECALL.value: recall_dict,
-            MetricKey.KEY_PRECISION.value: precision_dict,
-            MetricKey.KEY_F_SCORE.value: f_score_dict
+            MainMetricKey.KEY_RECALL.value: recall_dict,
+            MainMetricKey.KEY_PRECISION.value: precision_dict,
+            MainMetricKey.KEY_F_SCORE.value: f_score_dict
         }
-        if self._main_val_key:
-            if self._sub_val_key:
-                return result[self._main_val_key.value][self._sub_val_key.value]
-            return result[self._main_val_key.value.value]
-        return result
+        return result[self._main_val_key.value][self._sub_val_key.value], result
 
     def clear(self):
         self.tp_by_classes = [0 for _ in range(len(self.label_names))]
         self.tp_fp_by_classes = [0 for _ in range(len(self.label_names))]
         self.tp_fn_by_classes = [0 for _ in range(len(self.label_names))]
+
+    def add(self, other: 'SegmentationRecallPrecision'):
+        if not isinstance(other, SegmentationRecallPrecision):
+            raise RuntimeError(f"Bad class type. expected: {SegmentationRecallPrecision.__name__}")
+        if len(self.label_names) != len(other.label_names):
+            raise RuntimeError(
+                f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        for i in range(len(self.tp_by_classes)):
+            self.tp_by_classes[i] += other.tp_by_classes[i]
+            self.tp_fp_by_classes[i] += other.tp_fp_by_classes[i]
+            self.tp_fn_by_classes[i] += other.tp_fn_by_classes[i]
+
+    def div(self, num: int):
+        pass

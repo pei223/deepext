@@ -1,29 +1,28 @@
 from collections import OrderedDict
-from typing import List
+from typing import List, Dict, Tuple
 
 import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
 
 from .base_metrics import BaseMetrics
-from .keys import MetricKey
+from .keys import DetailMetricKey
 
 
 class ClassificationAccuracyByClasses(BaseMetrics):
-    def __init__(self, label_names: List[str], val_key: MetricKey = None):
-        assert val_key is None or val_key in [MetricKey.KEY_TOTAL, MetricKey.KEY_AVERAGE]
+    def __init__(self, label_names: List[str], val_key: DetailMetricKey = DetailMetricKey.KEY_TOTAL):
+        assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE]
         self.label_names = label_names
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
-        assert pred.ndim == 1 or pred.ndim == 2
-        assert teacher.ndim == 1 or teacher.ndim == 2
-        if isinstance(teacher, torch.Tensor):
-            teacher = teacher.cpu().numpy()
-        if isinstance(pred, torch.Tensor):
-            pred = pred.cpu().numpy()
+        assert pred.ndim in [1, 2]
+        assert teacher.ndim in [1, 2]
+
+        teacher = teacher.cpu().numpy() if isinstance(teacher, torch.Tensor) else teacher
+        pred = pred.cpu().numpy() if isinstance(pred, torch.Tensor) else pred
         if pred.ndim == 2:
             pred = pred.argmax(-1)
         if teacher.ndim == 2:
@@ -37,7 +36,7 @@ class ClassificationAccuracyByClasses(BaseMetrics):
             self.correct_by_classes[label] += correct
             self.incorrect_by_classes[label] += incorrect
 
-    def calc_summary(self) -> any:
+    def calc_summary(self) -> Tuple[float, Dict[str, float]]:
         result = OrderedDict()
         total_correct, total_incorrect = 0, 0
         avg_acc = 0.0
@@ -47,14 +46,24 @@ class ClassificationAccuracyByClasses(BaseMetrics):
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]
-        result[MetricKey.KEY_TOTAL.value] = total_correct / (total_correct + total_incorrect)
-        result[MetricKey.KEY_AVERAGE.value] = avg_acc / len(self.label_names)
-        if self._val_key:
-            return result[self._val_key.value]
-        return list(result.items())
+        result[DetailMetricKey.KEY_TOTAL.value] = total_correct / (total_correct + total_incorrect)
+        result[DetailMetricKey.KEY_AVERAGE.value] = avg_acc / len(self.label_names)
+        return result[self._val_key.value], result
 
     def clear(self):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
+    def add(self, other: 'ClassificationAccuracyByClasses'):
+        if not isinstance(other, ClassificationAccuracyByClasses):
+            raise RuntimeError(f"Bad class type. expected: {ClassificationAccuracyByClasses.__name__}")
+        if len(self.label_names) != len(other.label_names):
+            raise RuntimeError(
+                f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        for i in range(len(self.correct_by_classes)):
+            self.correct_by_classes[i] += other.correct_by_classes[i]
+            self.incorrect_by_classes[i] += other.incorrect_by_classes[i]
+
+    def div(self, num: int):
+        pass
 # TODO Recall/Precision/F Score

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Tuple, Dict
 
 import numpy as np
 import torch
@@ -15,7 +16,7 @@ class BaseMetrics:
         pass
 
     @abstractmethod
-    def calc_summary(self) -> any:
+    def calc_summary(self) -> Tuple[float, Dict[str, float]]:
         """
         データ全体の指標を計算して返却する.
         :return: 指標値.
@@ -29,11 +30,10 @@ class BaseMetrics:
         """
         pass
 
-    def save_visualized_metrics(self, result, filepath: str, epoch: int):
-        """
-        指標を可視化して保存する
-        :param result: 指標値
-        :param filepath: 保存先ファイルパス
-        :param epoch:
-        """
+    @abstractmethod
+    def add(self, other: 'BaseMetrics'):
+        pass
+
+    @abstractmethod
+    def div(self, num: int):
         pass

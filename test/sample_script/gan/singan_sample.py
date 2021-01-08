@@ -28,7 +28,7 @@ D_list = [singan.Discriminator(in_channels=3, middle_channels=int(32 * (1 + i //
           range(len(scale_list))]
 
 singan_model = singan.SinGAN(G_list, D_list)
-singan_model.fit(data_loader=data_loader, epochs=epochs, size_list=scale_list, lr=1e-4,
+singan_model.fit(train_data_loader=data_loader, epochs=epochs, size_list=scale_list, lr=1e-4,
                  on_epoch_finished=[
                      singan.SuperResolutionCallback(dataset=dataset, singan=singan_model,
                                                     base_img_path=settings["singan_test_image"],

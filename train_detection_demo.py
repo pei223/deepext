@@ -10,7 +10,7 @@ from deepext.models.object_detection import EfficientDetector, SSD
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.metrics.object_detection import *
-from deepext.metrics import MetricKey
+from deepext.metrics import DetailMetricKey
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 
@@ -124,13 +124,13 @@ if __name__ == "__main__":
                                                               out_dir=args.progress_dir,
                                                               label_names=dataset_setting.label_names))
     metric_ls = [DetectionIoUByClasses(dataset_setting.label_names), RecallAndPrecision(dataset_setting.label_names)]
-    metric_for_graph = DetectionIoUByClasses(dataset_setting.label_names, val_key=MetricKey.KEY_AVERAGE)
+    metric_for_graph = DetectionIoUByClasses(dataset_setting.label_names, val_key=DetailMetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=10,
                                                         metric_for_graph=metric_for_graph,
                                                         save_filepath="detection_learning_curve.png")
     # Training.
-    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(data_loader=train_dataloader,
-                                                                            test_dataloader=test_dataloader,
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
+                                                                            test_data_loader=test_dataloader,
                                                                             epochs=args.epoch,
                                                                             callbacks=callbacks, metric_ls=metric_ls,
                                                                             lr_scheduler_func=lr_scheduler,

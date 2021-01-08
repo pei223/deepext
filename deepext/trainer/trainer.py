@@ -25,15 +25,17 @@ class Trainer:
         self._writer = progress_writer or StdOutProgressWriter()
         self._visualizer = learning_curve_visualizer
 
-    def fit(self, data_loader: DataLoader, epochs: int, test_dataloader: DataLoader = None,
+    def fit(self, train_data_loader: DataLoader, epochs: int, test_data_loader: DataLoader = None,
             callbacks: List[Callable[[int, ], None]] = None, metric_ls: List[BaseMetrics] = None,
-            lr_scheduler_func: Callable[[int, ], float] = None, calc_metrics_per_epoch: int = 5):
+            metric_for_graph: BaseMetrics = None, lr_scheduler_func: Callable[[int, ], float] = None,
+            calc_metrics_per_epoch: int = 5):
         """
-        :param data_loader: DataLoader for training
+        :param train_data_loader: DataLoader for training
         :param epochs:
-        :param test_dataloader: DataLoader for test
+        :param test_data_loader: DataLoader for test
         :param callbacks:
         :param metric_ls: 指標リスト
+        :param metric_for_graph:
         :param lr_scheduler_func: 学習率スケジューリング関数
         :param calc_metrics_per_epoch: 何エポックごとに指標を計算するか
         """
@@ -44,7 +46,7 @@ class Trainer:
                                                          lr_lambda=lr_scheduler_func) if lr_scheduler_func else None
         for epoch in range(epochs):
             start = time.time()
-            mean_loss = self.train_epoch(data_loader)
+            mean_loss = self.train_epoch(train_data_loader)
             lr_scheduler.step(epoch + 1) if lr_scheduler else None
             self._visualizer.add_loss(mean_loss) if self._visualizer else None
             self._writer.out_epoch(epoch, max_epoch=epochs, elapsed_time=time.time() - start, mean_loss=mean_loss)
@@ -55,15 +57,14 @@ class Trainer:
                 continue
 
             # 指標算出
-            metric_for_graph = self._visualizer.metric_for_graph if self._visualizer else None
             # print("\nTrain Metrics\n" + self.calc_metrics(data_loader, metric_ls, metric_for_graph))
             # train_metric_val_for_graph = metric_for_graph.calc_summary() if metric_for_graph else None
             self._writer.out_heading("Test Metrics")
             # self.calc_metrics(data_loader, metric_ls, metric_for_graph, mode="train")
-            self.calc_metrics(test_dataloader, metric_ls, metric_for_graph, mode="test")
+            self.calc_metrics(test_data_loader, metric_ls, metric_for_graph, mode="test")
             if self._visualizer is None:
                 continue
-            metric_test_val_for_graph = metric_for_graph.calc_summary()
+            metric_test_val_for_graph = metric_for_graph.calc_summary()[0]
             self._visualizer.add_metrics(test_metric=metric_test_val_for_graph,
                                          train_metric=None,
                                          # train_metric=train_metric_val_for_graph,
@@ -95,6 +96,6 @@ class Trainer:
             if metric_for_graph:
                 metric_for_graph.calc_one_batch(result, teacher)
         for metric_func in metric_func_ls:
-            self._writer.out_metrics(metric_func.__class__.__name__, metric_func.calc_summary(),
-                                     mode).out_small_divider()
+            self._writer.out_metrics(metric_func.__class__.__name__, str(metric_func.calc_summary()[1]), mode) \
+                .out_small_divider()
         self._writer.out_elapsed_time(time.time() - start).out_divider()

@@ -1,13 +1,11 @@
 from matplotlib import pyplot as plt
-from ..metrics.base_metrics import BaseMetrics
 
 
 class LearningCurveVisualizer:
-    def __init__(self, metric_name: str, metric_for_graph: BaseMetrics, save_filepath: str,
+    def __init__(self, metric_name: str, save_filepath: str,
                  ignore_epoch=0):
         """
         :param metric_name:
-        :param metric_for_graph: グラフ描画に使用する指標
         :param save_filepath: グラフ画像保存先ファイルパス
         :param ignore_epoch: 最初に何エポック無視するか
         """
@@ -15,7 +13,6 @@ class LearningCurveVisualizer:
         self.metric_test_list = []
         self.metric_train_list = []
         self._metric_name = metric_name
-        self.metric_for_graph = metric_for_graph
         self._save_filepath = save_filepath
         self._ignore_epoch = ignore_epoch
 

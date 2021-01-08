@@ -1,16 +1,15 @@
 from typing import Tuple, List
 
-import cv2
 import numpy as np
-import torch
 from torch.utils.data import Dataset
 from ...models.base import DetectionModel
-from ...utils import *
+from ...utils import image_utils, draw_bounding_boxes_with_name_tag
 
 
 class VisualizeRandomObjectDetectionResult:
     def __init__(self, model: DetectionModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str,
-                 label_names: List[str], per_epoch: int = 10, pred_color=(0, 0, 255), teacher_color=(0, 255, 0)):
+                 label_names: List[str], per_epoch: int = 10, pred_color=(0, 0, 255), teacher_color=(0, 255, 0),
+                 apply_all_images=False):
         """
         :param model:
         :param img_size: (H, W)
@@ -28,17 +27,25 @@ class VisualizeRandomObjectDetectionResult:
         self._out_dir = out_dir
         self._img_size = img_size
         self._label_names = label_names
+        self._apply_all_images = apply_all_images
 
     def __call__(self, epoch: int):
         if (epoch + 1) % self._per_epoch != 0:
             return
+        if self._apply_all_images:
+            i = 1
+            for img_tensor, teacher_bboxes in self._dataset:
+                _, result_img = self._model.calc_detection_image(img_tensor, label_names=self._label_names)
+                result_img = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
+                image_utils.cv_to_pil(result_img).save(f"{self._out_dir}/data{i}_image{epoch + 1}.png")
+                i += 1
+            return
         data_len = len(self._dataset)
         random_image_index = np.random.randint(0, data_len)
         image, teacher_bboxes = self._dataset[random_image_index]
-        assert isinstance(image, torch.Tensor), "Expected image type is Tensor."
         result_img = self._model.calc_detection_image(image, label_names=self._label_names)[1]
-        image = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
-        cv2.imwrite(f"{self._out_dir}/result_{epoch + 1}.png", image)
+        result_img = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
+        image_utils.cv_to_pil(result_img).save(f"{self._out_dir}/result_{epoch + 1}.png")
 
     def _draw_teacher_bboxes(self, image: np.ndarray, teacher_bboxes: List[Tuple[float, float, float, float, int]]):
         """

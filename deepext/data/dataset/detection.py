@@ -113,8 +113,7 @@ class MultiVOCDatasetFactory(MultipleDatasetFactory):
     def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset]]:
         assert len(k_indices_ls) >= 2
         for i in range(len(k_indices_ls) - 1):
-            train_indices = k_indices_ls[i]
-            test_indices = k_indices_ls[i + 1]
+            train_indices, test_indices = self.split_kfold_train_test_indices(k_indices_ls, i)
             train_dataset, test_dataset = self.create_train_test(train_indices, test_indices)
             yield train_dataset, test_dataset
 
