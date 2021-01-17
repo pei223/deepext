@@ -11,7 +11,7 @@ class MultipleDatasetFactory(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset]]:
+    def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset], None, None]:
         pass
 
     def split_kfold_train_test_indices(self, k_indices_ls: List[np.ndarray], test_order: int) -> Tuple[

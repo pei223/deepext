@@ -1,4 +1,4 @@
-from torch import optim
+from torch import optim, nn as nn
 import torch
 import numpy as np
 
@@ -131,3 +131,6 @@ class EfficientDetector(DetectionModel):
 
     def get_optimizer(self):
         return self._optimizer
+
+    def get_model(self) -> nn.Module:
+        return self._model

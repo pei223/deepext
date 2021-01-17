@@ -18,21 +18,21 @@ class AttentionBranchNetwork(AttentionClassificationModel):
                  backbone: BackBoneKey = BackBoneKey.RESNET_50, n_blocks=3, lr=1e-4):
         super().__init__()
         self._backbone = backbone
-        self.model = try_cuda(
+        self._model = try_cuda(
             ABNModel(n_classes=n_classes, pretrained=pretrained, backbone=backbone, n_blocks=n_blocks))
         self._n_classes = n_classes
         self._n_blocks = n_blocks
-        self._optimizer = torch.optim.Adam(lr=lr, params=self.model.parameters())
+        self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
 
     def train_batch(self, inputs: torch.Tensor, teachers: torch.Tensor) -> float:
         """
         :param inputs: (batch size, channels, height, width)
         :param teachers: (batch size, class)
         """
-        self.model.train()
+        self._model.train()
         inputs, teachers = try_cuda(inputs).float(), try_cuda(teachers).long()
         self._optimizer.zero_grad()
-        pred = self.model(inputs)
+        pred = self._model(inputs)
         loss = self._calc_loss(pred, teachers)
         loss.backward()
         self._optimizer.step()
@@ -45,16 +45,16 @@ class AttentionBranchNetwork(AttentionClassificationModel):
                                                                                              reduction="mean")
 
     def predict(self, x):
-        self.model.eval()
+        self._model.eval()
         with torch.no_grad():
             x = try_cuda(x).float()
-            return self.model(x)[0].cpu().numpy()
+            return self._model(x)[0].cpu().numpy()
 
     def predict_label_and_heatmap_impl(self, x) -> Tuple[np.ndarray, np.ndarray]:
-        self.model.eval()
+        self._model.eval()
         with torch.no_grad():
             x = try_cuda(x).float()
-            pred, _, heatmap = self.model(x)
+            pred, _, heatmap = self._model(x)
             pred, heatmap = pred.cpu().numpy(), heatmap[:, 0].cpu().numpy()
             heatmap = self._normalize_heatmap(heatmap)
             return pred, heatmap
@@ -67,7 +67,7 @@ class AttentionBranchNetwork(AttentionClassificationModel):
     def save_weight(self, save_path: str):
         dict_to_save = {
             'num_class': self._n_classes,
-            'state_dict': self.model.state_dict(),
+            'state_dict': self._model.state_dict(),
             'optimizer': self._optimizer.state_dict()
         }
         torch.save(dict_to_save, save_path)
@@ -77,7 +77,7 @@ class AttentionBranchNetwork(AttentionClassificationModel):
         print('The pretrained weight is loaded')
         print('Num classes: {}'.format(params['num_class']))
         self._n_classes = params['num_class']
-        self.model.load_state_dict(params['state_dict'])
+        self._model.load_state_dict(params['state_dict'])
         self._optimizer.load_state_dict(params['optimizer'])
         return self
 
@@ -91,6 +91,9 @@ class AttentionBranchNetwork(AttentionClassificationModel):
 
     def get_optimizer(self):
         return self._optimizer
+
+    def get_model(self) -> nn.Module:
+        return self._model
 
 
 class ABNModel(nn.Module):

@@ -46,7 +46,7 @@ class CSVAnnotationMultiDatasetFactory(MultipleDatasetFactory):
                                             filename_label_dict=test_filename_label_dict)
         return train_dataset, test_dataset
 
-    def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset]]:
+    def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset], None, None]:
         assert len(k_indices_ls) >= 2
         for i in range(len(k_indices_ls) - 1):
             train_indices, test_indices = self.split_kfold_train_test_indices(k_indices_ls, i)

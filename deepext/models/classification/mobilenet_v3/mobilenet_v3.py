@@ -1,7 +1,7 @@
 import torch.optim as optim
 import torch
 import numpy as np
-
+from torch import nn
 from ...base import ClassificationModel
 from .mobilenetv3_lib.model import MobileNetV3 as MobileNetV3lib
 from ....utils.tensor_util import try_cuda
@@ -76,3 +76,6 @@ class MobileNetV3(ClassificationModel):
 
     def get_optimizer(self):
         return self._optimizer
+
+    def get_model(self) -> nn.Module:
+        return self._model

@@ -36,25 +36,29 @@ class Conv2DBatchNorm(nn.Module):
         init_weights_func(self.conv)
 
 
-class Conv2DBatchNormRelu(Conv2DBatchNorm):
+class Conv2DBatchNormRelu(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1, padding: int = 1,
                  dilation: int = 1, bias: bool = False):
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, bias)
+        super().__init__()
+        self._conv2d_batch_norm = Conv2DBatchNorm(in_channels, out_channels, kernel_size, stride, padding, dilation,
+                                                  bias)
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = super().forward(x)
+        x = self._conv2d_batch_norm.forward(x)
         return self.relu(x)
 
 
-class Conv2DBatchNormLeakyRelu(Conv2DBatchNorm):
+class Conv2DBatchNormLeakyRelu(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1, padding: int = 1,
                  dilation: int = 1, bias: bool = False):
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, bias)
+        super().__init__()
+        self._conv2d_batch_norm = Conv2DBatchNorm(in_channels, out_channels, kernel_size, stride, padding, dilation,
+                                                  bias)
         self.relu = nn.LeakyReLU()
 
     def forward(self, x):
-        x = super().forward(x)
+        x = self._conv2d_batch_norm.forward(x)
         return self.relu(x)
 
 

@@ -7,7 +7,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 from deepext.layers.loss import SegmentationFocalLoss
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
-from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet, ShelfNetRealtime
+from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
@@ -32,11 +32,6 @@ def build_custom_shelfnet(dataset_setting, args):
     loss_func = voc_focal_loss if args.dataset in ["voc2007", "voc2012"] else None
     return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=args.lr, out_size=dataset_setting.size,
                           loss_func=loss_func, backbone=BackBoneKey.from_val(args.submodel), backbone_pretrained=True)
-
-
-def build_shelfnet_realtime(dataset_setting, args):
-    return ShelfNetRealtime(size=dataset_setting.size, num_classes=dataset_setting.n_classes, batch_size_per_gpu=4,
-                            lr=args.lr)
 
 
 def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
@@ -76,7 +71,6 @@ DATASET_DICT = {
 MODEL_DICT = {
     "unet": build_unet,
     "custom_shelfnet": build_custom_shelfnet,
-    "shelfnet_realtime": build_shelfnet_realtime,
 }
 
 
@@ -136,9 +130,7 @@ if __name__ == "__main__":
     train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
                                                                                     args.batch_size)
     # Training setting.
-    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch,
-                                        warmup_epochs=0) if not isinstance(model,
-                                                                           ShelfNetRealtime) else None
+    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
 
     callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
     if args.progress_dir:
@@ -148,7 +140,6 @@ if __name__ == "__main__":
                  SegmentationRecallPrecision(dataset_setting.label_names)]
     metric_for_graph = SegmentationIoUByClasses(dataset_setting.label_names, val_key=DetailMetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
-                                                        metric_for_graph=metric_for_graph,
                                                         save_filepath="segmentation_learning_curve.png")
 
     # Training.
@@ -156,5 +147,6 @@ if __name__ == "__main__":
                                                                             test_data_loader=test_dataloader,
                                                                             epochs=args.epoch, callbacks=callbacks,
                                                                             lr_scheduler_func=lr_scheduler,
+                                                                            metric_for_graph=metric_for_graph,
                                                                             metric_ls=metric_ls,
                                                                             calc_metrics_per_epoch=5)

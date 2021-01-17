@@ -2,21 +2,77 @@ import torch
 from torch import nn
 import numpy as np
 from ...utils.tensor_util import try_cuda
-from ...layers.basic import *
-from ...layers.block import *
-from ...layers.loss import *
+from ...layers.basic import BottleNeck
+from ...layers.block import DownBlock, UpBlock
+from ...layers.loss import SegmentationTypedLoss
 from ..base import SegmentationModel
 
 __all__ = ['UNet', 'ResUNet']
 
 
-class UNet(SegmentationModel, nn.Module):
+class UNet(SegmentationModel):
     def __init__(self, n_input_channels, n_output_channels, first_layer_channels: int = 64, lr=1e-3,
                  loss_func: nn.Module = None):
-        super(UNet, self).__init__()
-
-        self._first_layer_channels = first_layer_channels
         self.n_channels, self.n_classes = n_input_channels, n_output_channels
+        self._model = UNetModel(n_input_channels, n_output_channels, first_layer_channels)
+
+        self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
+        self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
+
+    def predict(self, x: torch.Tensor) -> np.ndarray:
+        """
+        :param x:
+        :return: (batch size, class, height, width)
+        """
+        assert x.ndim == 4
+        self._model.eval()
+        x = try_cuda(x)
+        return self._model.forward(x).detach().cpu().numpy()
+
+    def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
+        """
+        :param train_x: (batch size, channels, height, width)
+        :param teacher: (batch size, class, height, width)
+        """
+        self._model.train()
+        train_x = try_cuda(train_x)
+        teacher = try_cuda(teacher)
+        self._optimizer.zero_grad()
+        pred = self._model(train_x)
+        loss = self._loss_func(pred, teacher)
+        loss.backward()
+        self._optimizer.step()
+        return loss.item()
+
+    def get_optimizer(self):
+        return self._optimizer
+
+    def save_weight(self, save_path: str):
+        torch.save({
+            'n_channels': self.n_channels,
+            'n_classes': self.n_classes,
+            'model_state_dict': self._model.state_dict(),
+            "optimizer": self.get_optimizer().state_dict(),
+        }, save_path)
+
+    def load_weight(self, weight_path: str):
+        params = torch.load(weight_path)
+        self.n_classes = params['n_classes']
+        self.n_channels = params['n_classes']
+        self._model.load_state_dict(params['model_state_dict'])
+        self._optimizer.load_state_dict(params['optimizer'])
+
+    def get_model_config(self):
+        return {}
+
+    def get_model(self) -> nn.Module:
+        return self._model
+
+
+class UNetModel(nn.Module):
+    def __init__(self, n_input_channels, n_output_channels, first_layer_channels: int = 64):
+        super().__init__()
+        self._first_layer_channels = first_layer_channels
         self._encoder_layer1 = self.down_sampling_layer(n_input_channels, first_layer_channels)
         self._encoder_layer2 = self.down_sampling_layer(first_layer_channels, first_layer_channels * 2)
         self._encoder_layer3 = self.down_sampling_layer(first_layer_channels * 2, first_layer_channels * 4)
@@ -30,9 +86,6 @@ class UNet(SegmentationModel, nn.Module):
         self._decoder_layer5 = self.up_sampling_layer(first_layer_channels * 2, n_output_channels, is_output_layer=True)
 
         self.apply(init_weights_func)
-
-        self._optimizer = torch.optim.Adam(lr=lr, params=self.parameters())
-        self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
 
     def forward(self, x):
         """
@@ -57,16 +110,6 @@ class UNet(SegmentationModel, nn.Module):
         output = self._decoder_layer5(x)
         return output
 
-    def predict(self, x: torch.Tensor) -> np.ndarray:
-        """
-        :param x:
-        :return: (batch size, class, height, width)
-        """
-        assert x.ndim == 4
-        self.eval()
-        x = try_cuda(x)
-        return self.forward(x).detach().cpu().numpy()
-
     def down_sampling_layer(self, n_input_channels: int, n_out_channels: int):
         # 継承することでエンコーダーにResnetBlocなど適用可能
         return DownBlock(n_input_channels, n_out_channels)
@@ -74,44 +117,6 @@ class UNet(SegmentationModel, nn.Module):
     def up_sampling_layer(self, n_input_channels: int, n_out_channels: int, is_output_layer=False):
         # 継承することでエンコーダーにResnetBlocなど適用可能
         return UpBlock(n_input_channels, n_out_channels, is_output_layer)
-
-    def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
-        """
-        :param train_x: (batch size, channels, height, width)
-        :param teacher: (batch size, class, height, width)
-        """
-        self.train()
-        train_x = try_cuda(train_x)
-        teacher = try_cuda(teacher)
-        self._optimizer.zero_grad()
-        pred = self(train_x)
-        loss = self._loss_func(pred, teacher)
-        loss.backward()
-        self._optimizer.step()
-        return loss.item()
-
-    def get_optimizer(self):
-        return self._optimizer
-
-    def save_weight(self, save_path: str):
-        torch.save({
-            'first_layer_channels': self._first_layer_channels,
-            'n_channels': self.n_channels,
-            'n_classes': self.n_classes,
-            'model_state_dict': self.state_dict(),
-            "optimizer": self.get_optimizer().state_dict(),
-        }, save_path)
-
-    def load_weight(self, weight_path: str):
-        params = torch.load(weight_path)
-        self._first_layer_channels = params['first_layer_channels']
-        self.n_classes = params['n_classes']
-        self.n_channels = params['n_classes']
-        self.load_state_dict(params['model_state_dict'])
-        self._optimizer.load_state_dict(params['optimizer'])
-
-    def get_model_config(self):
-        return {}
 
 
 def init_weights_func(m):

@@ -1,7 +1,13 @@
 from abc import ABCMeta, abstractmethod
+from warnings import warn
+
 import torch
 import numpy as np
 import torch.nn as nn
+import torch
+from torch.utils import mobile_optimizer
+
+from ...utils import try_cuda
 
 
 class BaseModel(metaclass=ABCMeta):
@@ -35,13 +41,30 @@ class BaseModel(metaclass=ABCMeta):
     def load_weight(self, weight_path: str):
         pass
 
-    # TODO state_dict以外の保存方法など考える
-    # @abstractmethod
-    # def get_model(self) -> nn.Module:
-    #     pass
-    #
-    # def save_model(self, filepath: str):
-    #     torch.save(self.get_model(), filepath)
-    #
-    # def load_model(self, filepath: str) -> nn.Module:
-    #     return torch.load(filepath)
+    @abstractmethod
+    def get_model(self) -> nn.Module:
+        pass
+
+    def save_model_for_mobile(self, out_filepath: str, for_os="cpu"):
+        if for_os == "cpu":
+            torch_model = self.get_model().to("cpu")
+            torch_model.eval()
+            example = torch.rand(1, 3, 256, 256).to("cpu")
+            traced_script_module = torch.jit.trace(torch_model, example)
+            traced_script_module.save(out_filepath)
+            return
+
+        torch_model = self.get_model()
+        torch_model = torch_model.to("cpu")
+        torch_model.eval()
+        script_model = torch.jit.script(torch_model)
+        if for_os == "android":
+            warn("Vulkan ")
+            mobile_optimizer.optimize_for_mobile(script_model, backend="Vulkan")
+        elif for_os == "ios":
+            mobile_optimizer.optimize_for_mobile(script_model, backend="metal")
+        torch.jit.save(script_model, out_filepath)
+
+        # scripted_model = torch.jit.script(torch_model)
+        # opt_model = mobile_optimizer.optimize_for_mobile(scripted_model)
+        # torch.jit.save(opt_model, out_filepath, _use_new_zipfile_serialization=False)

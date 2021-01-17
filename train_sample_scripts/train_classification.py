@@ -92,7 +92,6 @@ if isinstance(model, AttentionClassificationModel):
 metric_ls = [ClassificationAccuracyByClasses(label_names)]
 metric_for_graph = ClassificationAccuracyByClasses(label_names, val_key=DetailMetricKey.KEY_AVERAGE)
 learning_curve_visualizer = LearningCurveVisualizer(metric_name="Accuracy", ignore_epoch=0,
-                                                    metric_for_graph=metric_for_graph,
                                                     save_filepath="classification_learning_curve.png")
 
 # Training.
@@ -101,4 +100,5 @@ Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_da
                                                                         epochs=epoch, callbacks=callbacks,
                                                                         lr_scheduler_func=lr_scheduler,
                                                                         metric_ls=metric_ls,
+                                                                        metric_for_graph=metric_for_graph,
                                                                         calc_metrics_per_epoch=5)

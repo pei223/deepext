@@ -55,6 +55,9 @@ class CustomShelfNet(SegmentationModel):
         pred = self._model(x, aux=False)
         return pred.detach().cpu().numpy()
 
+    def get_model(self) -> nn.Module:
+        return self._model
+
     def save_weight(self, save_path: str):
         torch.save({
             'n_classes': self._n_classes,

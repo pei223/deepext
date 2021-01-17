@@ -153,9 +153,9 @@ class SegmentationIoUByClasses(BaseMetrics):
 class SegmentationRecallPrecision(BaseMetrics):
     def __init__(self, label_names: List[str], main_val_key: MainMetricKey = MainMetricKey.KEY_F_SCORE,
                  sub_val_key: DetailMetricKey = DetailMetricKey.KEY_TOTAL):
-        assert self._main_val_key in [MainMetricKey.KEY_RECALL, MainMetricKey.KEY_PRECISION,
-                                      MainMetricKey.KEY_F_SCORE]
-        assert self._sub_val_key in [DetailMetricKey.KEY_AVERAGE, DetailMetricKey.KEY_TOTAL]
+        assert main_val_key in [MainMetricKey.KEY_RECALL, MainMetricKey.KEY_PRECISION,
+                                MainMetricKey.KEY_F_SCORE]
+        assert sub_val_key in [DetailMetricKey.KEY_AVERAGE, DetailMetricKey.KEY_TOTAL]
         self.label_names = [DetailMetricKey.KEY_BACKGROUND.value, ] + label_names
         self.tp_by_classes = [0 for _ in range(len(self.label_names))]
         self.tp_fp_by_classes = [0 for _ in range(len(self.label_names))]

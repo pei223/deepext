@@ -83,3 +83,6 @@ class EfficientNet(ClassificationModel):
 
     def get_optimizer(self):
         return self._optimizer
+
+    def get_model(self) -> nn.Module:
+        return self._model

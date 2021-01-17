@@ -36,10 +36,13 @@ dataset = ImageOnlyDataset(image_dir=dataset_dir, image_transform=transforms)
 
 # TODO Choose model, parameters.
 print("Loading model...")
+# model: ClassificationModel = try_cuda(AttentionBranchNetwork(n_classes=n_classes, backbone=BackBoneKey.RESNET_18))
 model: ClassificationModel = try_cuda(MobileNetV3(num_classes=n_classes))
 model.load_weight(weight_path)
 print("Model loaded")
 
+# model.save_model_for_mobile("abn_model_android.pt", for_os="android")
+print("Saved")
 with open(out_file_path, "w") as file:
     file.write(f"filepath,result label\n")
     for i, image in enumerate(tqdm.tqdm(dataset)):
