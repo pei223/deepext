@@ -37,6 +37,9 @@ class DetectionIoUByClasses(BaseMetrics):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone(self) -> 'DetectionIoUByClasses':
+        return DetectionIoUByClasses(self.label_names, self._val_key)
+
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
         :param pred: (Batch size, bounding boxes by batch, 5(x_min, y_min, x_max, y_max, label))
@@ -124,6 +127,9 @@ class RecallAndPrecision(BaseMetrics):
         assert self._main_val_key in [MainMetricKey.KEY_RECALL, MainMetricKey.KEY_PRECISION,
                                       MainMetricKey.KEY_F_SCORE]
         assert self._sub_val_key in [DetailMetricKey.KEY_AVERAGE, DetailMetricKey.KEY_TOTAL]
+
+    def clone(self) -> 'RecallAndPrecision':
+        return RecallAndPrecision(self.label_names, self._main_val_key, self._sub_val_key)
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """

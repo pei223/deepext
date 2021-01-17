@@ -28,7 +28,7 @@ class Trainer:
     def fit(self, train_data_loader: DataLoader, epochs: int, test_data_loader: DataLoader = None,
             callbacks: List[Callable[[int, ], None]] = None, metric_ls: List[BaseMetrics] = None,
             metric_for_graph: BaseMetrics = None, lr_scheduler_func: Callable[[int, ], float] = None,
-            calc_metrics_per_epoch: int = 5):
+            calc_metrics_per_epoch: int = 5, required_train_metric=False):
         """
         :param train_data_loader: DataLoader for training
         :param epochs:
@@ -38,9 +38,13 @@ class Trainer:
         :param metric_for_graph:
         :param lr_scheduler_func: 学習率スケジューリング関数
         :param calc_metrics_per_epoch: 何エポックごとに指標を計算するか
+        :param required_train_metric: 訓練データの指標も出力するかどうか
         """
         callbacks, metric_ls = callbacks or [], metric_ls or []
         self._writer.out_training_start(str(self._model.get_model_config()))
+
+        test_metric_for_graph = metric_for_graph
+        train_metric_for_graph = metric_for_graph.clone()
 
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self._model.get_optimizer(),
                                                          lr_lambda=lr_scheduler_func) if lr_scheduler_func else None
@@ -57,17 +61,20 @@ class Trainer:
                 continue
 
             # 指標算出
-            # print("\nTrain Metrics\n" + self.calc_metrics(data_loader, metric_ls, metric_for_graph))
-            # train_metric_val_for_graph = metric_for_graph.calc_summary() if metric_for_graph else None
+            if required_train_metric:
+                self._writer.out_heading("Train Metrics")
+                self.calc_metrics(train_data_loader, metric_ls, train_metric_for_graph, mode="train")
+            else:
+                self.calc_metrics(train_data_loader, [], train_metric_for_graph, mode="train")
+
             self._writer.out_heading("Test Metrics")
-            # self.calc_metrics(data_loader, metric_ls, metric_for_graph, mode="train")
-            self.calc_metrics(test_data_loader, metric_ls, metric_for_graph, mode="test")
+            self.calc_metrics(test_data_loader, metric_ls, test_metric_for_graph, mode="test")
             if self._visualizer is None:
                 continue
-            metric_test_val_for_graph = metric_for_graph.calc_summary()[0]
-            self._visualizer.add_metrics(test_metric=metric_test_val_for_graph,
-                                         train_metric=None,
-                                         # train_metric=train_metric_val_for_graph,
+            test_metric_val_for_graph = test_metric_for_graph.calc_summary()[0]
+            train_metric_val_for_graph = train_metric_for_graph.calc_summary()[0]
+            self._visualizer.add_metrics(test_metric=test_metric_val_for_graph,
+                                         train_metric=train_metric_val_for_graph,
                                          calc_metric_per_epoch=calc_metrics_per_epoch)
             self._visualizer.save_graph_image()
 

@@ -31,6 +31,10 @@ class BaseMetrics:
         pass
 
     @abstractmethod
+    def clone(self):
+        pass
+
+    @abstractmethod
     def add(self, other: 'BaseMetrics'):
         pass
 

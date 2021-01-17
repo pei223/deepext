@@ -32,18 +32,24 @@ class LearningCurveVisualizer:
     def save_graph_image(self):
         if len(self.loss_list) <= self._ignore_epoch:
             return
-        fig, ax1 = plt.subplots()
+        fig, base_ax = plt.subplots()
         x_axis = list(range(len(self.loss_list)))[self._ignore_epoch:]
-        loss_line = ax1.plot(x_axis, self.loss_list[self._ignore_epoch:], label="Loss", color="blue")
+        loss_line = base_ax.plot(x_axis, self.loss_list[self._ignore_epoch:], label="Loss", color="blue")
+        lines = loss_line
+        metric_ax = base_ax.twinx()
         if len(self.metric_test_list) != 0:
-            ax2 = ax1.twinx()
-            metric_line = ax2.plot(x_axis, self.metric_test_list[self._ignore_epoch:], label=self._metric_name,
-                                   color="orange")
-            lines = metric_line + loss_line
-        else:
-            lines = loss_line
+            metric_lines = metric_ax.plot(x_axis, self.metric_test_list[self._ignore_epoch:],
+                                          label="Test " + self._metric_name,
+                                          color="orange")
+            lines += metric_lines
+        if len(self.metric_train_list) != 0:
+            metric_lines = metric_ax.plot(x_axis, self.metric_train_list[self._ignore_epoch:],
+                                          label="Train " + self._metric_name,
+                                          color="lightblue")
+            lines += metric_lines
+
         labels = [l.get_label() for l in lines]
-        ax1.legend(lines, labels, loc=0)
+        base_ax.legend(lines, labels, loc=0)
         plt.savefig(self._save_filepath)
         plt.cla()
         plt.clf()

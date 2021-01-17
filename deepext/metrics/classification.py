@@ -17,6 +17,9 @@ class ClassificationAccuracyByClasses(BaseMetrics):
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone(self) -> 'ClassificationAccuracyByClasses':
+        return ClassificationAccuracyByClasses(self.label_names, self._val_key)
+
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         assert pred.ndim in [1, 2]
         assert teacher.ndim in [1, 2]

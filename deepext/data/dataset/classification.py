@@ -99,6 +99,16 @@ class CSVAnnotationDataset(Dataset):
         self._label_transform = label_transform
         self._filepath_label_dict = filename_label_dict
 
+    def labels_distribution(self) -> List[int]:
+        """
+        summarize labels distribution.
+        :return: result[label] = count
+        """
+        result = [0 for _ in range(max(self._filepath_label_dict.values()))]
+        for label in self._filepath_label_dict.values():
+            result[label] += 1
+        return result
+
     def __len__(self):
         return len(self._filepath_label_dict)
 

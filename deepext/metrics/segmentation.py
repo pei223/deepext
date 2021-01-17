@@ -18,6 +18,9 @@ class SegmentationAccuracyByClasses(BaseMetrics):
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone(self) -> 'SegmentationAccuracyByClasses':
+        return SegmentationAccuracyByClasses(self.label_names, self._val_key)
+
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
         :param pred: (Batch size, classes, height, width)
@@ -88,6 +91,9 @@ class SegmentationIoUByClasses(BaseMetrics):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
+
+    def clone(self) -> 'SegmentationIoUByClasses':
+        return SegmentationIoUByClasses(self.label_names, self._val_key)
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -162,6 +168,9 @@ class SegmentationRecallPrecision(BaseMetrics):
         self.tp_fn_by_classes = [0 for _ in range(len(self.label_names))]
         self._main_val_key = main_val_key
         self._sub_val_key = sub_val_key
+
+    def clone(self) -> 'SegmentationRecallPrecision':
+        return SegmentationRecallPrecision(self.label_names, self._main_val_key, self._sub_val_key)
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
