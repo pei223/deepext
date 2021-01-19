@@ -66,9 +66,10 @@ MODEL_DICT = {
 def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
     DataLoader, DataLoader, Dataset, Dataset]:
     train_transforms = A.Compose([
-        A.HorizontalFlip(),
+        A.HorizontalFlip(p=0.3),
         A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
-        A.Rotate((-30, 30)),
+        A.Rotate((-30, 30), p=0.3),
+        A.CoarseDropout(max_width=24, max_height=24, max_holes=2, p=0.3),
         ToTensorV2(),
     ])
     train_transforms = AlbumentationsImageWrapperTransform(train_transforms)

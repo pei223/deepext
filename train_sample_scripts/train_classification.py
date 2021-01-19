@@ -7,7 +7,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 from dotenv import load_dotenv
 
 from deepext.layers.loss import ClassificationFocalLoss
-from deepext.data.dataset import CSVAnnotationDataset
+from deepext.data.dataset import CSVAnnotationDataset, CSVAnnotationMultiDatasetFactory
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import ClassificationModel, AttentionClassificationModel
 from deepext.models.classification import EfficientNet
@@ -16,20 +16,22 @@ from deepext.trainer.callbacks import ModelCheckout, GenerateAttentionMapCallbac
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
 from deepext.metrics.classification import *
 from deepext.utils import *
+from deepext.utils.dataset_util import create_label_list_and_dict, create_train_test_indices
 
-load_dotenv(".env")
+load_dotenv("envs/classification.env")
 
 # File/Directory path
-train_images_dir = os.environ.get("CLASSIFICATION_TRAIN_IMAGES_PATH")
-train_annotation_file_path = os.environ.get("CLASSIFICATION_TRAIN_ANNOTATION_FILE_PATH")
-test_images_dir = os.environ.get("CLASSIFICATION_TEST_IMAGES_PATH")
-test_annotation_file_path = os.environ.get("CLASSIFICATION_TEST_ANNOTATION_FILE_PATH")
+train_images_dir_path = os.environ.get("TRAIN_IMAGES_DIR_PATH")
+train_annotation_file_path = os.environ.get("TRAIN_ANNOTATION_FILE_PATH")
+test_images_dir_path = os.environ.get("TEST_IMAGES_DIR_PATH")
+test_annotation_file_path = os.environ.get("TEST_ANNOTATION_FILE_PATH")
+label_file_path = os.environ.get("LABEL_FILE_PATH")
+
+load_weight_path = os.environ.get("MODEL_WEIGHT_PATH")
+saved_weights_dir_path = os.environ.get("SAVED_WEIGHTS_DIR_PATH")
 progress_dir = os.environ.get("PROGRESS_DIR_PATH")
-saved_weights_dir = os.environ.get("SAVED_WEIGHTS_DIR_PATH")
-load_weight_path = os.environ.get("CLASSIFICATION_MODEL_WEIGHT_PATH")
-label_file_path = os.environ.get("CLASSIFICATION_LABEL_FILE_PATH")
 # Model params
-image_size = (int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT")))
+width, height = int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT"))
 n_classes = int(os.environ.get("N_CLASSES"))
 # Learning params
 batch_size = int(os.environ.get("BATCH_SIZE"))
@@ -38,41 +40,47 @@ epoch = int(os.environ.get("EPOCH"))
 
 if not Path(progress_dir).exists():
     Path(progress_dir).mkdir()
-if not Path(saved_weights_dir).exists():
-    Path(saved_weights_dir).mkdir()
+if not Path(saved_weights_dir_path).exists():
+    Path(saved_weights_dir_path).mkdir()
 
-label_names = []
-with open(label_file_path, "r") as file:
-    for line in file:
-        label_names.append(line.replace("\n", ""))
+label_names, label_dict = create_label_list_and_dict(label_file_path)
 
 # TODO Learning detail params
 lr_scheduler = CosineDecayScheduler(max_lr=lr, max_epochs=epoch, warmup_epochs=0)
 ignore_indices = [255, ]
 
 # TODO Data augmentation
-train_transforms = A.Compose([
+train_transforms = AlbumentationsImageWrapperTransform(A.Compose([
     A.HorizontalFlip(),
-    A.RandomResizedCrop(image_size[0], image_size[1], scale=(0.5, 2.0)),
-    A.CoarseDropout(max_height=int(image_size[1] / 5), max_width=int(image_size[0] / 5)),
+    A.RandomResizedCrop(width=width, height=height, scale=(0.5, 2.0)),
+    A.CoarseDropout(max_height=int(height / 5), max_width=int(width / 5)),
     A.RandomBrightnessContrast(),
     ToTensorV2(),
-])
-train_transforms = AlbumentationsImageWrapperTransform(train_transforms)
+]))
 
-test_transforms = A.Compose([
-    A.Resize(image_size[0], image_size[1]),
+test_transforms = AlbumentationsImageWrapperTransform(A.Compose([
+    A.Resize(width=width, height=height),
     ToTensorV2(),
-])
-test_transforms = AlbumentationsImageWrapperTransform(test_transforms)
+]))
 
 # dataset/dataloader
-train_dataset = CSVAnnotationDataset.create(image_dir=train_images_dir,
-                                            annotation_csv_filepath=train_annotation_file_path,
-                                            image_transform=train_transforms)
-test_dataset = CSVAnnotationDataset.create(image_dir=test_images_dir,
-                                           annotation_csv_filepath=test_annotation_file_path,
-                                           image_transform=test_transforms)
+if test_images_dir_path == "":
+    data_len = int(os.environ.get("DATA_LEN"))
+    test_ratio = float(os.environ.get("TEST_RATIO"))
+    train_indices, test_indices = create_train_test_indices(data_len, test_ratio)
+    train_dataset, test_dataset = CSVAnnotationMultiDatasetFactory(images_dir=train_images_dir_path,
+                                                                   annotation_csv_filepath=train_annotation_file_path,
+                                                                   train_image_transform=train_transforms,
+                                                                   test_image_transform=test_transforms,
+                                                                   label_dict=label_dict) \
+        .create_train_test(train_indices, test_indices)
+else:
+    train_dataset = CSVAnnotationDataset.create(image_dir=train_images_dir_path,
+                                                annotation_csv_filepath=train_annotation_file_path,
+                                                image_transform=train_transforms)
+    test_dataset = CSVAnnotationDataset.create(image_dir=test_images_dir_path,
+                                               annotation_csv_filepath=test_annotation_file_path,
+                                               image_transform=test_transforms)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -85,7 +93,7 @@ if load_weight_path and load_weight_path != "":
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir)]
+callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir_path)]
 if isinstance(model, AttentionClassificationModel):
     callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=progress_dir, per_epoch=5,
                                                   dataset=test_dataset, label_names=label_names))

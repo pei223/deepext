@@ -14,32 +14,32 @@ from deepext.models.segmentation import CustomShelfNet
 from deepext.utils import try_cuda
 from deepext.data.dataset import ImageOnlyDataset
 
-load_dotenv(".env")
+load_dotenv("envs/segmentation.env")
 
-weight_path = os.environ.get("SEGMENTATION_MODEL_WEIGHT_PATH")
-dataset_dir = os.environ.get("SEGMENTATION_TEST_IMAGES_PATH")
-out_dir = os.environ.get("OUT_DIR_PATH")
-img_size = (int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT")))
+images_dir_path = os.environ.get("IMAGES_DIR_PATH")
+result_dir_path = os.environ.get("RESULT_DIR_PATH")
+weight_path = os.environ.get("MODEL_WEIGHT_PATH")
+width, height = int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT"))
 n_classes = int(os.environ.get("N_CLASSES"))
 
-if not Path(out_dir).exists():
-    Path(out_dir).mkdir()
+if not Path(result_dir_path).exists():
+    Path(result_dir_path).mkdir()
 
 transforms = AlbumentationsImageWrapperTransform(A.Compose([
-    A.Resize(img_size[0], img_size[1]),
+    A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))
 
-dataset = ImageOnlyDataset(image_dir=dataset_dir, image_transform=transforms)
+dataset = ImageOnlyDataset(image_dir=images_dir_path, image_transform=transforms)
 
 # TODO Choose model, parameters.
 print("Loading model...")
 model: SegmentationModel = try_cuda(
-    CustomShelfNet(n_classes=n_classes, out_size=img_size, backbone=BackBoneKey.RESNET_18))
+    CustomShelfNet(n_classes=n_classes, out_size=(height, width), backbone=BackBoneKey.RESNET_18))
 model.load_weight(weight_path)
 print("Model loaded")
 
 for i, image in enumerate(tqdm.tqdm(dataset)):
     result_idx_array, result_image = model.calc_segmentation_image(image)
     result_image = cv2.resize(result_image, dataset.current_image_size())
-    cv2.imwrite(f"{out_dir}/result_{i}.jpg", result_image)
+    cv2.imwrite(f"{result_dir_path}/result_{i}.jpg", result_image)

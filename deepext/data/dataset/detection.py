@@ -47,7 +47,7 @@ class VOCAnnotationTransform:
     """
     points = ["xmin", "ymin", "xmax", "ymax"]
 
-    def __init__(self, class_index_dict: Dict, size: Tuple[int, int] = None, ignore_labels: List[str] = None):
+    def __init__(self, class_index_dict: Dict[str, int], size: Tuple[int, int] = None, ignore_labels: List[str] = None):
         self._size = size
         self._class_index_dict = class_index_dict
         self._ignore_labels = ignore_labels or []

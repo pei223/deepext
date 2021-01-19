@@ -1,15 +1,15 @@
 from typing import Tuple
 import torch
 import numpy as np
-
+import cv2
 from .base_model import BaseModel
 from ...utils.tensor_util import try_cuda
-from ...utils.image_utils import *
+from ...utils.image_utils import indexed_image_to_rgb
 
 
 class SegmentationModel(BaseModel):
-    def calc_segmentation_image(self, img: torch.Tensor or np.ndarray, alpha=0.7, require_normalize=False) -> Tuple[
-        np.ndarray, np.ndarray]:
+    def calc_segmentation_image(self, img: torch.Tensor or np.ndarray, alpha=0.7, require_normalize=False) -> \
+            Tuple[np.ndarray, np.ndarray]:
         """
         :param img: Numpy array or torch.Tensor image.
         :param require_normalize:

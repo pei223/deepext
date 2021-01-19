@@ -45,18 +45,17 @@ class BaseModel(metaclass=ABCMeta):
     def get_model(self) -> nn.Module:
         pass
 
-    def save_model_for_mobile(self, out_filepath: str, for_os="cpu"):
+    def save_model_for_mobile(self, width: int, height: int, out_filepath: str, for_os="cpu"):
+        torch_model = self.get_model()
+        torch_model = torch_model.to("cpu")
+        torch_model.eval()
+
         if for_os == "cpu":
-            torch_model = self.get_model().to("cpu")
-            torch_model.eval()
-            example = torch.rand(1, 3, 256, 256).to("cpu")
+            example = torch.rand(1, 3, width, height).to("cpu")
             traced_script_module = torch.jit.trace(torch_model, example)
             traced_script_module.save(out_filepath)
             return
 
-        torch_model = self.get_model()
-        torch_model = torch_model.to("cpu")
-        torch_model.eval()
         script_model = torch.jit.script(torch_model)
         if for_os == "android":
             warn("Vulkan ")

@@ -10,6 +10,10 @@ from ..utils.image_utils import *
 
 class RealtimePrediction:
     def __init__(self, model: BaseModel, img_size_for_model: Tuple[int, int]):
+        """
+        :param model:
+        :param img_size_for_model: (width, height)
+        """
         self.model = model
         self.is_running = False
         self.img_size_for_model = img_size_for_model

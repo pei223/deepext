@@ -32,8 +32,9 @@ class AttentionClassificationModel(ClassificationModel):
     def predict_label_and_heatmap(self, img: torch.Tensor or np.ndarray, require_normalize=False, origin_alpha=0.6) -> \
             Tuple[int, np.ndarray]:
         """
+        :param origin_alpha:
+        :param require_normalize:
         :param img:
-        :param img_size_for_model:
         :return: Class num, heatmap
         """
         assert img.ndim == 3, f"Invalid data shape: {img.shape}. Expected 3 dimension"

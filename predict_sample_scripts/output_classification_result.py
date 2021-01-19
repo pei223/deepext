@@ -12,38 +12,36 @@ from deepext.models.classification import AttentionBranchNetwork, MobileNetV3
 from deepext.utils import try_cuda
 from deepext.data.dataset import ImageOnlyDataset
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
+from deepext.utils.dataset_util import create_label_list_and_dict
 
-load_dotenv(".env")
+load_dotenv("envs/classification.env")
 
-weight_path = os.environ.get("CLASSIFICATION_MODEL_WEIGHT_PATH")
-dataset_dir = os.environ.get("CLASSIFICATION_TEST_IMAGES_PATH")
-out_file_path = os.environ.get("CLASSIFICATION_OUT_FILE_PATH")
-label_file_path = os.environ.get("CLASSIFICATION_LABEL_FILE_PATH")
-img_size = (int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT")))
+images_dir_path = os.environ.get("IMAGES_DIR_PATH")
+result_file_path = os.environ.get("RESULT_FILE_PATH")
+weight_path = os.environ.get("MODEL_WEIGHT_PATH")
+label_file_path = os.environ.get("LABEL_FILE_PATH")
+width, height = int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT"))
 n_classes = int(os.environ.get("N_CLASSES"))
 
-label_names = []
-with open(label_file_path, "r") as file:
-    for line in file:
-        label_names.append(line.replace("\n", ""))
+label_names, label_dict = create_label_list_and_dict(label_file_path)
 
 transforms = AlbumentationsImageWrapperTransform(A.Compose([
-    A.Resize(img_size[0], img_size[1]),
+    A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))
 
-dataset = ImageOnlyDataset(image_dir=dataset_dir, image_transform=transforms)
+dataset = ImageOnlyDataset(image_dir=images_dir_path, image_transform=transforms)
 
 # TODO Choose model, parameters.
 print("Loading model...")
-# model: ClassificationModel = try_cuda(AttentionBranchNetwork(n_classes=n_classes, backbone=BackBoneKey.RESNET_18))
-model: ClassificationModel = try_cuda(MobileNetV3(num_classes=n_classes))
+model: ClassificationModel = try_cuda(AttentionBranchNetwork(n_classes=n_classes, backbone=BackBoneKey.RESNET_34))
+# model: ClassificationModel = try_cuda(MobileNetV3(num_classes=n_classes))
 model.load_weight(weight_path)
 print("Model loaded")
 
-# model.save_model_for_mobile("abn_model_android.pt", for_os="android")
+# model.save_model_for_mobile(width=96, height=96, out_filepath="abn_model_android.pt", for_os="cpu")
 print("Saved")
-with open(out_file_path, "w") as file:
+with open(result_file_path, "w") as file:
     file.write(f"filepath,result label\n")
     for i, image in enumerate(tqdm.tqdm(dataset)):
         label = model.predict_label(image)

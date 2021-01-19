@@ -13,23 +13,25 @@ from deepext.models.object_detection import EfficientDetector
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
-from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
+from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator, MultiVOCDatasetFactory
 from deepext.metrics.object_detection import *
 from deepext.utils import try_cuda
+from deepext.utils.dataset_util import create_label_list_and_dict, create_train_test_indices
 
-load_dotenv(".env")
+load_dotenv("envs/detection.env")
 
 # File/Directory path
-train_images_dir = os.environ.get("DETECTION_TRAIN_IMAGES_PATH")
-train_annotations_dir = os.environ.get("DETECTION_TRAIN_ANNOTATIONS_PATH")
-test_images_dir = os.environ.get("DETECTION_TEST_IMAGES_PATH")
-test_annotations_dir = os.environ.get("DETECTION_TEST_ANNOTATIONS_PATH")
-progress_dir = os.environ.get("PROGRESS_DIR_PATH")
+train_images_dir = os.environ.get("TRAIN_IMAGES_PATH")
+train_annotations_dir = os.environ.get("TRAIN_ANNOTATIONS_PATH")
+test_images_dir = os.environ.get("TEST_IMAGES_PATH")
+test_annotations_dir = os.environ.get("TEST_ANNOTATIONS_PATH")
+label_file_path = os.environ.get("LABEL_FILE_PATH")
+
+load_weight_path = os.environ.get("MODEL_WEIGHT_PATH")
 saved_weights_dir = os.environ.get("SAVED_WEIGHTS_DIR_PATH")
-load_weight_path = os.environ.get("DETECTION_MODEL_WEIGHT_PATH")
-label_file_path = os.environ.get("DETECTION_LABEL_FILE_PATH")
+progress_dir = os.environ.get("PROGRESS_DIR_PATH")
 # Model params
-image_size = (int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT")))
+width, height = int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT"))
 n_classes = int(os.environ.get("N_CLASSES"))
 # Learning params
 batch_size = int(os.environ.get("BATCH_SIZE"))
@@ -41,43 +43,42 @@ if not Path(progress_dir).exists():
 if not Path(saved_weights_dir).exists():
     Path(saved_weights_dir).mkdir()
 
-label_names, class_index_dict = [], {}
-i = 0
-with open(label_file_path, "r") as file:
-    for line in file:
-        label_name = line.replace("\n", "")
-        label_names.append(label_name)
-        class_index_dict[label_name] = i
-        i += 1
+label_names, class_index_dict = create_label_list_and_dict(label_file_path)
 
 # TODO Learning detail params
 lr_scheduler = CosineDecayScheduler(max_lr=lr, max_epochs=epoch, warmup_epochs=0)
 ignore_indices = [255, ]
 
 # TODO Data augmentation
-train_transforms = [
+train_transforms = AlbumentationsDetectionWrapperTransform([
     A.HorizontalFlip(),
-    A.RandomResizedCrop(image_size[0], image_size[1], scale=(0.5, 2.0)),
-    A.CoarseDropout(max_height=int(image_size[1] / 5), max_width=int(image_size[0] / 5)),
+    A.RandomResizedCrop(width=width, height=height, scale=(0.5, 2.0)),
+    A.CoarseDropout(max_height=int(height / 5), max_width=int(width / 5)),
     A.RandomBrightnessContrast(),
     ToTensorV2(),
-]
-train_transforms = AlbumentationsDetectionWrapperTransform(train_transforms,
-                                                           annotation_transform=VOCAnnotationTransform(
-                                                               class_index_dict))
+], annotation_transform=VOCAnnotationTransform(class_index_dict))
 
-test_transforms = [
-    A.Resize(image_size[0], image_size[1]),
+test_transforms = AlbumentationsDetectionWrapperTransform([
+    A.Resize(width=width, height=height),
     ToTensorV2(),
-]
-test_transforms = AlbumentationsDetectionWrapperTransform(test_transforms,
-                                                          annotation_transform=VOCAnnotationTransform(class_index_dict))
+], annotation_transform=VOCAnnotationTransform(class_index_dict))
 
 # dataset/dataloader
-train_dataset = VOCDataset.create(image_dir_path=train_images_dir, annotation_dir_path=train_annotations_dir,
-                                  transforms=train_transforms, class_index_dict=class_index_dict)
-test_dataset = VOCDataset.create(image_dir_path=test_images_dir, transforms=test_transforms,
-                                 annotation_dir_path=test_annotations_dir, class_index_dict=class_index_dict)
+if test_images_dir == "":
+    data_len = int(os.environ.get("DATA_LEN"))
+    test_ratio = float(os.environ.get("TEST_RATIO"))
+    train_indices, test_indices = create_train_test_indices(data_len, test_ratio)
+    train_dataset, test_dataset = MultiVOCDatasetFactory(image_dir_path=train_images_dir,
+                                                         annotation_dir_path=train_annotations_dir,
+                                                         train_transforms=train_transforms,
+                                                         test_transforms=test_transforms,
+                                                         class_index_dict=class_index_dict) \
+        .create_train_test(train_indices, test_indices)
+else:
+    train_dataset = VOCDataset.create(image_dir_path=train_images_dir, annotation_dir_path=train_annotations_dir,
+                                      transforms=train_transforms, class_index_dict=class_index_dict)
+    test_dataset = VOCDataset.create(image_dir_path=test_images_dir, transforms=test_transforms,
+                                     annotation_dir_path=test_annotations_dir, class_index_dict=class_index_dict)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                               collate_fn=AdjustDetectionTensorCollator())
@@ -93,7 +94,7 @@ if load_weight_path and load_weight_path != "":
 # TODO Train detail params
 # Metrics/Callbacks
 callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir),
-             VisualizeRandomObjectDetectionResult(model, image_size, test_dataset, per_epoch=5,
+             VisualizeRandomObjectDetectionResult(model, (height, width), test_dataset, per_epoch=5,
                                                   out_dir=progress_dir, label_names=label_names)]
 metric_ls = [DetectionIoUByClasses(label_names), RecallAndPrecision(label_names)]
 metric_for_graph = DetectionIoUByClasses(label_names, val_key=DetailMetricKey.KEY_AVERAGE)

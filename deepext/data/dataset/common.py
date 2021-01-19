@@ -84,6 +84,9 @@ class ImageOnlyDataset(Dataset):
         return len(self._image_file_path_ls)
 
     def current_image_size(self) -> Tuple[int, int]:
+        """
+        :return: (width, height)
+        """
         return self._current_image_size
 
     def current_file_path(self) -> str:
@@ -94,7 +97,8 @@ class ImageOnlyDataset(Dataset):
         self._current_file_path = file_path
         img = Image.open(str(file_path))
         img = img.convert("RGB")
-        self._current_image_size = img.size[0], img.size[1]
+        width, height = img.size[:2]
+        self._current_image_size = width, height
         if self._image_transform:
             img = self._image_transform(img)
         return img

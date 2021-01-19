@@ -10,19 +10,16 @@ from deepext.models.classification import EfficientNet, AttentionBranchNetwork, 
 from deepext.camera import RealtimeDetection, RealtimeSegmentation, RealtimeAttentionClassification, \
     RealtimeClassification
 from deepext.utils import try_cuda
+from deepext.utils.dataset_util import create_label_list_and_dict
 
-load_dotenv(".env")
+load_dotenv("envs/camera_prediction.env")
 
-weight_path = os.environ.get("CAMERA_PREDICTION_MODEL_WEIGHT_PATH")
-label_file_path = os.environ.get("CAMERA_PREDICTION_LABEL_FILE_PATH")
-
-image_size = (int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT")))
+weight_path = os.environ.get("MODEL_WEIGHT_PATH")
+label_file_path = os.environ.get("LABEL_FILE_PATH")
+width, height = int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT"))
 n_classes = int(os.environ.get("N_CLASSES"))
 
-label_names = []
-with open(label_file_path, "r") as file:
-    for line in file:
-        label_names.append(line.replace("\n", ""))
+label_names, label_dict = create_label_list_and_dict(label_file_path)
 
 # TODO Choose model and load weight.
 print("Loading model...")
@@ -34,14 +31,14 @@ model.load_weight(weight_path)
 print("Model loaded")
 
 if isinstance(model, SegmentationModel):
-    RealtimeSegmentation(model=model, img_size_for_model=image_size).realtime_predict(
+    RealtimeSegmentation(model=model, img_size_for_model=(width, height)).realtime_predict(
         video_output_path="output.mp4")
 elif isinstance(model, DetectionModel):
-    RealtimeDetection(model=model, img_size_for_model=image_size,
+    RealtimeDetection(model=model, img_size_for_model=(width, height),
                       label_names=label_names).realtime_predict(video_output_path="output.mp4")
 elif isinstance(model, AttentionClassificationModel):
-    RealtimeAttentionClassification(model=model, img_size_for_model=image_size,
+    RealtimeAttentionClassification(model=model, img_size_for_model=(width, height),
                                     label_names=label_names).realtime_predict(video_output_path="output.mp4")
 elif isinstance(model, ClassificationModel):
-    RealtimeClassification(model=model, img_size_for_model=image_size,
+    RealtimeClassification(model=model, img_size_for_model=(width, height),
                            label_names=label_names).realtime_predict(video_output_path="output.mp4")

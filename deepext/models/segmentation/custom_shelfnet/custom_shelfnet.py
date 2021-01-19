@@ -16,6 +16,14 @@ __all__ = ['CustomShelfNet']
 class CustomShelfNet(SegmentationModel):
     def __init__(self, n_classes: int, out_size: Tuple[int, int], lr=1e-3, loss_func: nn.Module = None,
                  backbone: BackBoneKey = BackBoneKey.RESNET_18, backbone_pretrained=True):
+        """
+        :param n_classes:
+        :param out_size: (height, width)
+        :param lr:
+        :param loss_func:
+        :param backbone:
+        :param backbone_pretrained:
+        """
         super().__init__()
         self._n_classes = n_classes
         if backbone in [BackBoneKey.EFFICIENTNET_B0, BackBoneKey.EFFICIENTNET_B1, BackBoneKey.EFFICIENTNET_B2,

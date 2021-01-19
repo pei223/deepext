@@ -10,30 +10,28 @@ from deepext.models.object_detection import EfficientDetector
 from deepext.data.dataset import ImageOnlyDataset
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
 from deepext.utils import try_cuda
+from deepext.utils.dataset_util import create_label_list_and_dict
 
-load_dotenv(".env")
+load_dotenv("envs/detection.env")
 
-weight_path = os.environ.get("DETECTION_MODEL_WEIGHT_PATH")
-dataset_dir = os.environ.get("DETECTION_TEST_IMAGES_PATH")
-label_file_path = os.environ.get("DETECTION_LABEL_FILE_PATH")
-out_dir = os.environ.get("OUT_DIR_PATH")
-img_size = (int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT")))
+images_dir_path = os.environ.get("IMAGES_DIR_PATH")
+result_dir_path = os.environ.get("RESULT_DIR_PATH")
+weight_path = os.environ.get("MODEL_WEIGHT_PATH")
+label_file_path = os.environ.get("LABEL_FILE_PATH")
+width, height = int(os.environ.get("IMAGE_WIDTH")), int(os.environ.get("IMAGE_HEIGHT"))
 n_classes = int(os.environ.get("N_CLASSES"))
 
-if not Path(out_dir).exists():
-    Path(out_dir).mkdir()
+if not Path(result_dir_path).exists():
+    Path(result_dir_path).mkdir()
 
-label_names = []
-with open(label_file_path, "r") as file:
-    for line in file:
-        label_names.append(line.replace("\n", ""))
+label_names, label_dict = create_label_list_and_dict(label_file_path)
 
 transforms = AlbumentationsImageWrapperTransform(A.Compose([
-    A.Resize(img_size[0], img_size[1]),
+    A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))
 
-dataset = ImageOnlyDataset(image_dir=dataset_dir, image_transform=transforms)
+dataset = ImageOnlyDataset(image_dir=images_dir_path, image_transform=transforms)
 
 # TODO Choose model, parameters.
 print("Loading model...")
@@ -45,4 +43,4 @@ print("Model loaded")
 for i, image in enumerate(tqdm.tqdm(dataset)):
     result_bboxes, result_image = model.calc_detection_image(image, label_names=label_names)
     result_image = cv2.resize(result_image, dataset.current_image_size())
-    cv2.imwrite(f"{out_dir}/result_{i}.jpg", result_image)
+    cv2.imwrite(f"{result_dir_path}/result_{i}.jpg", result_image)
