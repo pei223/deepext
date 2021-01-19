@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 
-class BaseMetrics:
+class BaseMetric:
     @abstractmethod
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -31,13 +31,17 @@ class BaseMetrics:
         pass
 
     @abstractmethod
-    def clone(self):
+    def clone_empty(self) -> 'BaseMetric':
         pass
 
     @abstractmethod
-    def add(self, other: 'BaseMetrics'):
+    def clone(self) -> 'BaseMetric':
         pass
 
     @abstractmethod
-    def div(self, num: int):
+    def __add__(self, other: 'BaseMetric') -> 'BaseMetric':
+        pass
+
+    @abstractmethod
+    def __truediv__(self, num: int) -> 'BaseMetric':
         pass

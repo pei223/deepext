@@ -5,11 +5,11 @@ import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
 
-from .base_metrics import BaseMetrics
-from .keys import DetailMetricKey
+from .base_metric import BaseMetric
+from .metric_keys import DetailMetricKey
 
 
-class ClassificationAccuracyByClasses(BaseMetrics):
+class ClassificationAccuracyByClasses(BaseMetric):
     def __init__(self, label_names: List[str], val_key: DetailMetricKey = DetailMetricKey.KEY_TOTAL):
         assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE]
         self.label_names = label_names
@@ -17,8 +17,14 @@ class ClassificationAccuracyByClasses(BaseMetrics):
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone_empty(self) -> 'ClassificationAccuracyByClasses':
+        return ClassificationAccuracyByClasses(self.label_names.copy(), self._val_key)
+
     def clone(self) -> 'ClassificationAccuracyByClasses':
-        return ClassificationAccuracyByClasses(self.label_names, self._val_key)
+        new_metric = self.clone_empty()
+        new_metric.correct_by_classes = self.correct_by_classes.copy()
+        new_metric.incorrect_by_classes = self.incorrect_by_classes.copy()
+        return new_metric
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         assert pred.ndim in [1, 2]
@@ -57,16 +63,18 @@ class ClassificationAccuracyByClasses(BaseMetrics):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
-    def add(self, other: 'ClassificationAccuracyByClasses'):
+    def __add__(self, other: 'ClassificationAccuracyByClasses') -> 'ClassificationAccuracyByClasses':
         if not isinstance(other, ClassificationAccuracyByClasses):
             raise RuntimeError(f"Bad class type. expected: {ClassificationAccuracyByClasses.__name__}")
         if len(self.label_names) != len(other.label_names):
             raise RuntimeError(
                 f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        new_metric = self.clone_empty()
         for i in range(len(self.correct_by_classes)):
-            self.correct_by_classes[i] += other.correct_by_classes[i]
-            self.incorrect_by_classes[i] += other.incorrect_by_classes[i]
+            new_metric.correct_by_classes[i] = self.correct_by_classes[i] + other.correct_by_classes[i]
+            new_metric.incorrect_by_classes[i] = self.incorrect_by_classes[i] + other.incorrect_by_classes[i]
+        return new_metric
 
-    def div(self, num: int):
-        pass
+    def __truediv__(self, num: int) -> 'ClassificationAccuracyByClasses':
+        return self.clone()
 # TODO Recall/Precision/F Score

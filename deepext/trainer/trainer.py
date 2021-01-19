@@ -9,7 +9,7 @@ import tqdm
 from .callbacks import ModelCallback
 from ..models.base import BaseModel
 from ..utils.tensor_util import try_cuda
-from ..metrics.base_metrics import BaseMetrics
+from ..metrics.base_metric import BaseMetric
 from .learning_curve_visualizer import LearningCurveVisualizer
 from .progress_writer import ProgressWriter, StdOutProgressWriter
 
@@ -27,8 +27,8 @@ class Trainer:
         self._visualizer = learning_curve_visualizer
 
     def fit(self, train_data_loader: DataLoader, epochs: int, test_data_loader: DataLoader = None,
-            callbacks: List[ModelCallback] = None, metric_ls: List[BaseMetrics] = None,
-            metric_for_graph: BaseMetrics = None, lr_scheduler_func: Callable[[int, ], float] = None,
+            callbacks: List[ModelCallback] = None, metric_ls: List[BaseMetric] = None,
+            metric_for_graph: BaseMetric = None, lr_scheduler_func: Callable[[int, ], float] = None,
             calc_metrics_per_epoch: int = 5, required_train_metric=False):
         """
         :param train_data_loader: DataLoader for training
@@ -45,7 +45,7 @@ class Trainer:
         self._writer.out_training_start(str(self._model.get_model_config()))
 
         test_metric_for_graph = metric_for_graph
-        train_metric_for_graph = metric_for_graph.clone()
+        train_metric_for_graph = metric_for_graph.clone_empty()
 
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self._model.get_optimizer(),
                                                          lr_lambda=lr_scheduler_func) if lr_scheduler_func else None
@@ -89,8 +89,8 @@ class Trainer:
             loss_list.append(loss)
         return mean(loss_list)
 
-    def calc_metrics(self, data_loader: DataLoader, metric_func_ls: List[BaseMetrics],
-                     metric_for_graph: BaseMetrics or None, mode: str):
+    def calc_metrics(self, data_loader: DataLoader, metric_func_ls: List[BaseMetric],
+                     metric_for_graph: BaseMetric or None, mode: str):
         start = time.time()
         for metric_func in metric_func_ls:
             metric_func.clear()

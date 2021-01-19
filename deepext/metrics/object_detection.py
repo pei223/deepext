@@ -4,8 +4,8 @@ from typing import List, Tuple, Dict
 import numpy as np
 import torch
 
-from .base_metrics import BaseMetrics
-from .keys import DetailMetricKey, MainMetricKey
+from .base_metric import BaseMetric
+from .metric_keys import DetailMetricKey, MainMetricKey
 
 
 def calc_overlap_union_iou(pred: np.ndarray or None, teacher: np.ndarray) -> Tuple[float, float, float]:
@@ -29,7 +29,7 @@ def calc_overlap_union_iou(pred: np.ndarray or None, teacher: np.ndarray) -> Tup
     return overlap, union, iou
 
 
-class DetectionIoUByClasses(BaseMetrics):
+class DetectionIoUByClasses(BaseMetric):
     def __init__(self, label_names: List[str], val_key: DetailMetricKey = DetailMetricKey.KEY_AVERAGE):
         assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE]
         self.label_names = label_names
@@ -37,8 +37,14 @@ class DetectionIoUByClasses(BaseMetrics):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone_empty(self) -> 'DetectionIoUByClasses':
+        return DetectionIoUByClasses(self.label_names.copy(), self._val_key)
+
     def clone(self) -> 'DetectionIoUByClasses':
-        return DetectionIoUByClasses(self.label_names, self._val_key)
+        new_metric = self.clone_empty()
+        new_metric.union_by_classes = self.union_by_classes.copy()
+        new_metric.overlap_by_classes = self.overlap_by_classes.copy()
+        return new_metric
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -101,21 +107,23 @@ class DetectionIoUByClasses(BaseMetrics):
         self.union_by_classes = [0 for i in range(len(self.label_names))]
         self.overlap_by_classes = [0 for i in range(len(self.label_names))]
 
-    def add(self, other: 'DetectionIoUByClasses'):
+    def __add__(self, other: 'DetectionIoUByClasses') -> 'DetectionIoUByClasses':
         if not isinstance(other, DetectionIoUByClasses):
             raise RuntimeError(f"Bad class type. expected: {DetectionIoUByClasses.__name__}")
         if len(self.label_names) != len(other.label_names):
             raise RuntimeError(
                 f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        new_metric = self.clone_empty()
         for i in range(len(self.union_by_classes)):
-            self.union_by_classes[i] += other.union_by_classes[i]
-            self.overlap_by_classes[i] += other.overlap_by_classes[i]
+            new_metric.union_by_classes[i] = self.union_by_classes[i] + other.union_by_classes[i]
+            new_metric.overlap_by_classes[i] = self.overlap_by_classes[i] + other.overlap_by_classes[i]
+        return new_metric
 
-    def div(self, num: int):
-        pass
+    def __truediv__(self, num: int) -> 'DetectionIoUByClasses':
+        return self.clone()
 
 
-class RecallAndPrecision(BaseMetrics):
+class RecallAndPrecision(BaseMetric):
     def __init__(self, label_names: List[str], main_val_key: MainMetricKey = MainMetricKey.KEY_F_SCORE,
                  sub_val_key: DetailMetricKey = DetailMetricKey.KEY_TOTAL):
         self.label_names = label_names
@@ -128,8 +136,15 @@ class RecallAndPrecision(BaseMetrics):
                                       MainMetricKey.KEY_F_SCORE]
         assert self._sub_val_key in [DetailMetricKey.KEY_AVERAGE, DetailMetricKey.KEY_TOTAL]
 
+    def clone_empty(self) -> 'RecallAndPrecision':
+        return RecallAndPrecision(self.label_names.copy(), self._main_val_key, self._sub_val_key)
+
     def clone(self) -> 'RecallAndPrecision':
-        return RecallAndPrecision(self.label_names, self._main_val_key, self._sub_val_key)
+        new_metric = self.clone_empty()
+        new_metric.tp_by_classes = self.tp_by_classes.copy()
+        new_metric.fp_by_classes = self.fp_by_classes.copy()
+        new_metric.fn_by_classes = self.fn_by_classes.copy()
+        return new_metric
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -211,19 +226,21 @@ class RecallAndPrecision(BaseMetrics):
         self.fp_by_classes = [0 for i in range(len(self.label_names))]
         self.fn_by_classes = [0 for i in range(len(self.label_names))]
 
-    def add(self, other: 'RecallAndPrecision'):
+    def __add__(self, other: 'RecallAndPrecision') -> 'RecallAndPrecision':
         if not isinstance(other, RecallAndPrecision):
             raise RuntimeError(f"Bad class type. expected: {RecallAndPrecision.__name__}")
         if len(self.label_names) != len(other.label_names):
             raise RuntimeError(
                 f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        new_metric = self.clone_empty()
         for i in range(len(self.tp_by_classes)):
-            self.tp_by_classes[i] += other.tp_by_classes[i]
-            self.fp_by_classes[i] += other.fp_by_classes[i]
-            self.fn_by_classes[i] += other.fn_by_classes[i]
+            new_metric.tp_by_classes[i] = self.tp_by_classes[i] + other.tp_by_classes[i]
+            new_metric.fp_by_classes[i] = self.fp_by_classes[i] + other.fp_by_classes[i]
+            new_metric.fn_by_classes[i] = self.fn_by_classes[i] + other.fn_by_classes[i]
+        return new_metric
 
-    def div(self, num: int):
-        pass
+    def __truediv__(self, num: int) -> 'RecallAndPrecision':
+        return self.clone()
 
 
 # TODO 実装途中

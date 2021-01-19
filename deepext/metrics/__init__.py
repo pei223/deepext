@@ -1,2 +1,2 @@
 from . import classification, segmentation, object_detection
-from .keys import DetailMetricKey
+from .metric_keys import DetailMetricKey

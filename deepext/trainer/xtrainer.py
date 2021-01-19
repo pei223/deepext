@@ -6,7 +6,7 @@ import time
 
 from ..assemble.assemble_model import AssembleModel
 from ..models.base import BaseModel
-from ..metrics.base_metrics import BaseMetrics
+from ..metrics.base_metric import BaseMetric
 from ..assemble.learning_table import LearningTable
 from ..utils.tensor_util import try_cuda
 from .learning_curve_visualizer import LearningCurveVisualizer
@@ -16,9 +16,9 @@ class XTrainer:
     def __init__(self, models: AssembleModel):
         self._assemble_model: AssembleModel = models
 
-    def fit(self, learning_tables: List[LearningTable], metric_func_ls: List[BaseMetrics] = None,
+    def fit(self, learning_tables: List[LearningTable], metric_func_ls: List[BaseMetric] = None,
             test_dataloader: DataLoader = None, calc_metrics_per_epoch: int = 5,
-            lr_graph_filepath: str = None, metric_for_graph: BaseMetrics = None):
+            lr_graph_filepath: str = None, metric_for_graph: BaseMetric = None):
         assert len(learning_tables) == len(self._assemble_model.model_list)
         # TODO LRCurveとかMetricsをTrainerに合わせる　色々追いついてない
         metric_func_ls = metric_func_ls or []
@@ -36,7 +36,7 @@ class XTrainer:
         print(f"\n\n\nTotal metrics  :  {total_metric_str}\n\n")
 
     def train_one_model(self, model: BaseModel, learning_table: LearningTable, test_dataloader: DataLoader,
-                        metric_func_ls: List[BaseMetrics]):
+                        metric_func_ls: List[BaseMetric]):
         for epoch in range(learning_table.epochs):
             mean_loss = self.train_epoch(model, learning_table.data_loader)
             metric_str = ""
@@ -57,7 +57,7 @@ class XTrainer:
             loss_list.append(loss)
         return mean(loss_list)
 
-    def calc_metric(self, model: BaseModel or AssembleModel, data_loader: DataLoader, metric_func: BaseMetrics) -> float:
+    def calc_metric(self, model: BaseModel or AssembleModel, data_loader: DataLoader, metric_func: BaseMetric) -> float:
         metric_func.clear()
         for x, teacher in data_loader:
             result = model.predict(x)

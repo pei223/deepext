@@ -4,11 +4,11 @@ from typing import List, Dict, Tuple
 import numpy as np
 import torch
 
-from .base_metrics import BaseMetrics
-from .keys import DetailMetricKey, MainMetricKey
+from .base_metric import BaseMetric
+from .metric_keys import DetailMetricKey, MainMetricKey
 
 
-class SegmentationAccuracyByClasses(BaseMetrics):
+class SegmentationAccuracyByClasses(BaseMetric):
     def __init__(self, label_names: List[str],
                  val_key: DetailMetricKey = DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND):
         assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE,
@@ -18,8 +18,14 @@ class SegmentationAccuracyByClasses(BaseMetrics):
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone_empty(self) -> 'SegmentationAccuracyByClasses':
+        return SegmentationAccuracyByClasses(self.label_names.copy(), self._val_key)
+
     def clone(self) -> 'SegmentationAccuracyByClasses':
-        return SegmentationAccuracyByClasses(self.label_names, self._val_key)
+        new_metric = self.clone_empty()
+        new_metric.correct_by_classes = self.correct_by_classes.copy()
+        new_metric.incorrect_by_classes = self.incorrect_by_classes.copy()
+        return new_metric
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -68,21 +74,23 @@ class SegmentationAccuracyByClasses(BaseMetrics):
         self.correct_by_classes = [0 for _ in range(len(self.label_names))]
         self.incorrect_by_classes = [0 for _ in range(len(self.label_names))]
 
-    def add(self, other: 'SegmentationAccuracyByClasses'):
+    def __add__(self, other: 'SegmentationAccuracyByClasses') -> 'SegmentationAccuracyByClasses':
         if not isinstance(other, SegmentationAccuracyByClasses):
             raise RuntimeError(f"Bad class type. expected: {SegmentationAccuracyByClasses.__name__}")
         if len(self.label_names) != len(other.label_names):
             raise RuntimeError(
                 f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        new_metric = self.clone_empty()
         for i in range(len(self.correct_by_classes)):
-            self.correct_by_classes[i] += other.correct_by_classes[i]
-            self.incorrect_by_classes[i] += other.incorrect_by_classes[i]
+            new_metric.correct_by_classes[i] = self.correct_by_classes[i] + other.correct_by_classes[i]
+            new_metric.incorrect_by_classes[i] = self.incorrect_by_classes[i] + other.incorrect_by_classes[i]
+        return new_metric
 
-    def div(self, num: int):
-        pass
+    def __truediv__(self, num: int) -> 'SegmentationAccuracyByClasses':
+        return self.clone()
 
 
-class SegmentationIoUByClasses(BaseMetrics):
+class SegmentationIoUByClasses(BaseMetric):
     def __init__(self, label_names: List[str],
                  val_key: DetailMetricKey = DetailMetricKey.KEY_AVERAGE_WITHOUT_BACKGROUND):
         assert val_key in [DetailMetricKey.KEY_TOTAL, DetailMetricKey.KEY_AVERAGE,
@@ -92,8 +100,14 @@ class SegmentationIoUByClasses(BaseMetrics):
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
         self._val_key = val_key
 
+    def clone_empty(self) -> 'SegmentationIoUByClasses':
+        return SegmentationIoUByClasses(self.label_names.copy(), self._val_key)
+
     def clone(self) -> 'SegmentationIoUByClasses':
-        return SegmentationIoUByClasses(self.label_names, self._val_key)
+        new_metric = self.clone_empty()
+        new_metric.overlap_by_classes = self.overlap_by_classes.copy()
+        new_metric.union_by_classes = self.union_by_classes.copy()
+        return new_metric
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -142,21 +156,23 @@ class SegmentationIoUByClasses(BaseMetrics):
         self.overlap_by_classes = [0 for _ in range(len(self.label_names))]
         self.union_by_classes = [0 for _ in range(len(self.label_names))]
 
-    def add(self, other: 'SegmentationIoUByClasses'):
+    def __add__(self, other: 'SegmentationIoUByClasses'):
         if not isinstance(other, SegmentationIoUByClasses):
             raise RuntimeError(f"Bad class type. expected: {SegmentationIoUByClasses.__name__}")
         if len(self.label_names) != len(other.label_names):
             raise RuntimeError(
                 f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        new_metric = self.clone_empty()
         for i in range(len(self.overlap_by_classes)):
-            self.overlap_by_classes[i] += other.overlap_by_classes[i]
-            self.union_by_classes[i] += other.union_by_classes[i]
+            new_metric.overlap_by_classes[i] = self.overlap_by_classes[i] + other.overlap_by_classes[i]
+            new_metric.union_by_classes[i] = self.union_by_classes[i] + other.union_by_classes[i]
+        return new_metric
 
-    def div(self, num: int):
-        pass
+    def __truediv__(self, num: int):
+        return self.clone()
 
 
-class SegmentationRecallPrecision(BaseMetrics):
+class SegmentationRecallPrecision(BaseMetric):
     def __init__(self, label_names: List[str], main_val_key: MainMetricKey = MainMetricKey.KEY_F_SCORE,
                  sub_val_key: DetailMetricKey = DetailMetricKey.KEY_TOTAL):
         assert main_val_key in [MainMetricKey.KEY_RECALL, MainMetricKey.KEY_PRECISION,
@@ -169,8 +185,15 @@ class SegmentationRecallPrecision(BaseMetrics):
         self._main_val_key = main_val_key
         self._sub_val_key = sub_val_key
 
+    def clone_empty(self) -> 'SegmentationRecallPrecision':
+        return SegmentationRecallPrecision(self.label_names.copy(), self._main_val_key, self._sub_val_key)
+
     def clone(self) -> 'SegmentationRecallPrecision':
-        return SegmentationRecallPrecision(self.label_names, self._main_val_key, self._sub_val_key)
+        new_metric = self.clone_empty()
+        new_metric.tp_by_classes = self.tp_by_classes.copy()
+        new_metric.tp_fp_by_classes = self.tp_fp_by_classes.copy()
+        new_metric.tp_fn_by_classes = self.tp_fn_by_classes.copy()
+        return new_metric
 
     def calc_one_batch(self, pred: np.ndarray or torch.Tensor, teacher: np.ndarray or torch.Tensor):
         """
@@ -241,16 +264,18 @@ class SegmentationRecallPrecision(BaseMetrics):
         self.tp_fp_by_classes = [0 for _ in range(len(self.label_names))]
         self.tp_fn_by_classes = [0 for _ in range(len(self.label_names))]
 
-    def add(self, other: 'SegmentationRecallPrecision'):
+    def __add__(self, other: 'SegmentationRecallPrecision') -> 'SegmentationRecallPrecision':
         if not isinstance(other, SegmentationRecallPrecision):
             raise RuntimeError(f"Bad class type. expected: {SegmentationRecallPrecision.__name__}")
         if len(self.label_names) != len(other.label_names):
             raise RuntimeError(
                 f"Label count must be same. but self is {len(self.label_names)} and other is {len(other.label_names)}")
+        new_metric = self.clone_empty()
         for i in range(len(self.tp_by_classes)):
-            self.tp_by_classes[i] += other.tp_by_classes[i]
-            self.tp_fp_by_classes[i] += other.tp_fp_by_classes[i]
-            self.tp_fn_by_classes[i] += other.tp_fn_by_classes[i]
+            new_metric.tp_by_classes[i] = self.tp_by_classes[i] + other.tp_by_classes[i]
+            new_metric.tp_fp_by_classes[i] = self.tp_fp_by_classes[i] + other.tp_fp_by_classes[i]
+            new_metric.tp_fn_by_classes[i] = self.tp_fn_by_classes[i] + other.tp_fn_by_classes[i]
+        return new_metric
 
-    def div(self, num: int):
-        pass
+    def __truediv__(self, num: int):
+        return self.clone()
