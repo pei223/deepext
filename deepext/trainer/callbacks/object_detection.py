@@ -2,11 +2,12 @@ from typing import Tuple, List
 
 import numpy as np
 from torch.utils.data import Dataset
+from . import ModelCallback
 from ...models.base import DetectionModel
 from ...utils import image_utils, draw_bounding_boxes_with_name_tag
 
 
-class VisualizeRandomObjectDetectionResult:
+class VisualizeRandomObjectDetectionResult(ModelCallback):
     def __init__(self, model: DetectionModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str,
                  label_names: List[str], per_epoch: int = 10, pred_color=(0, 0, 255), teacher_color=(0, 255, 0),
                  apply_all_images=False):

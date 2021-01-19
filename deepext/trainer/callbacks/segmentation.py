@@ -1,10 +1,11 @@
 import numpy as np
 from torch.utils.data import Dataset
+from . import ModelCallback
 from ...models.base import SegmentationModel
 from ...utils import image_utils
 
 
-class GenerateSegmentationImageCallback:
+class GenerateSegmentationImageCallback(ModelCallback):
     def __init__(self, model: SegmentationModel, output_dir: str, per_epoch: int, dataset: Dataset, alpha=0.6,
                  apply_all_images=False):
         self._model: SegmentationModel = model

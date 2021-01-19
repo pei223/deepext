@@ -1,8 +1,15 @@
 from pathlib import Path
 from ...models.base import BaseModel
+from abc import ABCMeta, abstractmethod
 
 
-class ModelCheckout:
+class ModelCallback(metaclass=ABCMeta):
+    @abstractmethod
+    def __call__(self, epoch: int):
+        pass
+
+
+class ModelCheckout(ModelCallback):
     def __init__(self, model: BaseModel, our_dir: str, per_epoch: int = 5):
         self._per_epoch = per_epoch
         self._out_dir = Path(our_dir)

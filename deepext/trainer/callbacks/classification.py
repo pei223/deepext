@@ -2,11 +2,13 @@ import numpy as np
 from typing import List
 from torch.utils.data import Dataset
 import tqdm
+
+from . import ModelCallback
 from ...utils import try_cuda, image_utils
 from ...models.base import AttentionClassificationModel, ClassificationModel
 
 
-class GenerateAttentionMapCallback:
+class GenerateAttentionMapCallback(ModelCallback):
     def __init__(self, output_dir: str, per_epoch: int, dataset: Dataset, model: AttentionClassificationModel,
                  label_names: List[str], apply_all_images=False):
         """
@@ -43,7 +45,7 @@ class GenerateAttentionMapCallback:
         return f"{self._out_dir}/{prefix}epoch{epoch + 1}_T_{self._label_names[label]}_P_{self._label_names[pred_label]}.png"
 
 
-class CSVClassificationResultCallback:
+class CSVClassificationResultCallback(ModelCallback):
     def __init__(self, out_filepath: str, per_epoch: int, dataset: Dataset, model: ClassificationModel,
                  label_names: List[str]):
         self._model = model

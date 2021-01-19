@@ -6,6 +6,7 @@ from statistics import mean
 import time
 import tqdm
 
+from .callbacks import ModelCallback
 from ..models.base import BaseModel
 from ..utils.tensor_util import try_cuda
 from ..metrics.base_metrics import BaseMetrics
@@ -26,7 +27,7 @@ class Trainer:
         self._visualizer = learning_curve_visualizer
 
     def fit(self, train_data_loader: DataLoader, epochs: int, test_data_loader: DataLoader = None,
-            callbacks: List[Callable[[int, ], None]] = None, metric_ls: List[BaseMetrics] = None,
+            callbacks: List[ModelCallback] = None, metric_ls: List[BaseMetrics] = None,
             metric_for_graph: BaseMetrics = None, lr_scheduler_func: Callable[[int, ], float] = None,
             calc_metrics_per_epoch: int = 5, required_train_metric=False):
         """
