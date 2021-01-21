@@ -9,7 +9,7 @@ class AlbumentationsImageWrapperTransform:
         self._albumentations_transforms = albumentations_transforms
         self._is_image_normalize = is_image_normalize
 
-    def __call__(self, image: Image.Image or np.ndarray):
+    def __call__(self, image: Image.Image or np.ndarray, label: int):
         if not isinstance(image, np.ndarray):
             image = np.array(image)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -18,4 +18,4 @@ class AlbumentationsImageWrapperTransform:
         result_image = result_dict["image"]
         if self._is_image_normalize:
             result_image = result_image / 255.
-        return result_image
+        return result_image, label

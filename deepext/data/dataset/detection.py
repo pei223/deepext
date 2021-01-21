@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Tuple, Generator
+from typing import List, Union, Dict, Tuple
 from warnings import warn
 
 from torch.utils.data import Dataset
@@ -8,7 +8,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from PIL import Image
 from .common import create_filepath_ls
-from .dataset_factory import MultipleDatasetFactory
 
 
 class AdjustDetectionTensorCollator:
@@ -82,42 +81,6 @@ class VOCAnnotationTransform:
         return result
 
 
-class MultiVOCDatasetFactory(MultipleDatasetFactory):
-    def __init__(self, image_dir_path: str,
-                 annotation_dir_path: str, train_transforms, test_transforms,
-                 class_index_dict: Dict[str, int],
-                 valid_suffixes: List[str] = None):
-        self._img_dir_path = image_dir_path
-        self._annotation_dir_path = annotation_dir_path
-        self._train_transforms, self._test_transforms = train_transforms, test_transforms
-        self._class_index_dict = class_index_dict
-        self._valid_suffixes = valid_suffixes
-
-    def create_train_test(self, train_indices: np.ndarray, test_indices: np.ndarray) -> Tuple[Dataset, Dataset]:
-        image_path_ls = create_filepath_ls(self._img_dir_path, self._valid_suffixes)
-        train_image_path_ls, test_image_path_ls = [], []
-        for idx in train_indices:
-            train_image_path_ls.append(image_path_ls[idx])
-        for idx in test_indices:
-            test_image_path_ls.append(image_path_ls[idx])
-        train_dataset = VOCDataset(image_filename_ls=train_image_path_ls,
-                                   image_dir_path=self._img_dir_path,
-                                   annotation_dir_path=self._annotation_dir_path,
-                                   transform=self._train_transforms, class_index_dict=self._class_index_dict)
-        test_dataset = VOCDataset(image_filename_ls=test_image_path_ls,
-                                  image_dir_path=self._img_dir_path,
-                                  annotation_dir_path=self._annotation_dir_path,
-                                  transform=self._test_transforms, class_index_dict=self._class_index_dict)
-        return train_dataset, test_dataset
-
-    def create_kfold_generator(self, k_indices_ls: List[np.ndarray]) -> Generator[Tuple[Dataset, Dataset], None, None]:
-        assert len(k_indices_ls) >= 2
-        for i in range(len(k_indices_ls) - 1):
-            train_indices, test_indices = self.split_kfold_train_test_indices(k_indices_ls, i)
-            train_dataset, test_dataset = self.create_train_test(train_indices, test_indices)
-            yield train_dataset, test_dataset
-
-
 class VOCDataset(Dataset):
     @staticmethod
     def create(image_dir_path: str, annotation_dir_path: str, transforms, class_index_dict: Dict[str, int],
@@ -143,7 +106,9 @@ class VOCDataset(Dataset):
         annotation_node = ET.parse(str(annotation_path)).getroot()
         annotation = self._voc_transform(annotation_node)
 
-        return self._transform(image, annotation)
+        if self._transform:
+            return self._transform(image, annotation)
+        return image, annotation
 
     def __len__(self):
         return len(self._image_filename_ls)

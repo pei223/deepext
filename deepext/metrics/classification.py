@@ -51,7 +51,7 @@ class ClassificationAccuracyByClasses(BaseMetric):
         avg_acc = 0.0
         for i, label_name in enumerate(self.label_names):
             correct, incorrect = self.correct_by_classes[i], self.incorrect_by_classes[i]
-            result[label_name] = correct / (correct + incorrect)
+            result[label_name] = correct / (correct + incorrect) if correct + incorrect > 0 else 0
             total_correct += correct
             total_incorrect += incorrect
             avg_acc += result[label_name]

@@ -1,64 +1,23 @@
 from typing import Tuple, List
-import pickle
-import numpy as np
 from pathlib import Path
 from PIL import Image
 from torch.utils.data import Dataset
 
 
-class TrainTestIndicesManager:
-    @staticmethod
-    def create_from_indices_file(filepath: str) -> 'TrainTestIndicesManager':
-        with open(filepath, "rb") as file:
-            data = pickle.load(file)
-            if not isinstance(data, tuple) and len(data) != 2:
-                raise RuntimeError(f"Indices pickle file must be 2 tuple object.  {type(data)}")
-            train_indices, test_indices = data
-            return TrainTestIndicesManager(train_indices, test_indices)
+class TransformsWrapperDataset(Dataset):
+    def __init__(self, root_dataset: Dataset, transforms):
+        super().__init__()
+        self._root_dataset = root_dataset
+        self._transforms = transforms
 
-    @staticmethod
-    def create(data_len: int, test_ratio: float) -> 'TrainTestIndicesManager':
-        test_num = int(data_len * test_ratio)
-        train_num = data_len - test_num
-        indices = np.random.permutation(data_len)
-        train_indices = indices[:train_num]
-        test_indices = indices[train_indices:]
-        return TrainTestIndicesManager(train_indices, test_indices)
+    def __len__(self):
+        return len(self._root_dataset)
 
-    def __init__(self, train_indices: np.ndarray, test_indices: np.ndarray):
-        assert train_indices.ndim == 1 and test_indices.ndim == 1
-        self._train_indices, self._test_indices = train_indices, test_indices
-
-    def train_test_indices(self) -> Tuple[np.ndarray, np.ndarray]:
-        return self._train_indices, self._test_indices
-
-    def save_indices(self, save_filepath: str):
-        with open(save_filepath, "wb") as file:
-            pickle.dump((self._train_indices, self._test_indices), file)
-
-
-class KFoldIndicesManager:
-    @staticmethod
-    def create(data_len: int, k: int) -> 'KFoldIndicesManager':
-        if k < 2 or k > 100:
-            raise RuntimeError("K must be 0~100")
-        all_indices = np.random.permutation(data_len)
-        result = []
-        block_data_num = int(data_len / k)
-        for i in range(k):
-            result.append(all_indices[block_data_num * i:block_data_num * i + 1])
-        return KFoldIndicesManager(result)
-
-    @staticmethod
-    def create_from_indices_file(filepath: str) -> 'KFoldIndicesManager':
-        with open(filepath, "rb") as file:
-            data = pickle.load(file)
-            if not isinstance(data, list):
-                raise RuntimeError(f"KFold Indices pickle file must be list object.  {type(data)}")
-            return KFoldIndicesManager(data)
-
-    def __init__(self, indices_ls: List[np.ndarray]):
-        self._indices_ls = indices_ls
+    def __getitem__(self, idx):
+        image, label = self._root_dataset[idx]
+        if self._transforms is not None:
+            return self._transforms(image, label)
+        return image, label
 
 
 def create_filepath_ls(image_dir_path: str, valid_suffixes: List[str] = None) -> List[str]:
@@ -100,5 +59,5 @@ class ImageOnlyDataset(Dataset):
         width, height = img.size[:2]
         self._current_image_size = width, height
         if self._image_transform:
-            img = self._image_transform(img)
+            img, label = self._image_transform(img, None)
         return img

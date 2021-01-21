@@ -12,7 +12,7 @@ __all__ = ['EfficientDetector']
 
 class EfficientDetector(DetectionModel):
     def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.5, max_detections=100,
-                 backbone_path: str = None, backbone_pretrained=True):
+                 backbone_path: str = None, backbone_pretrained=True, grad_accumulation_steps=8):
         super().__init__()
         self._model = try_cuda(EfficientDet(num_classes=num_classes,
                                             network=network,
@@ -25,6 +25,8 @@ class EfficientDetector(DetectionModel):
         self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
         self._score_threshold = score_threshold
         self._max_detections = max_detections
+        self._grad_accumulation_steps = grad_accumulation_steps
+        self._batch_count = 0
 
     def train_batch(self, inputs, teachers) -> float:
         """
@@ -43,9 +45,13 @@ class EfficientDetector(DetectionModel):
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()
         loss = classification_loss + regression_loss
+        loss.backward()
+        self._batch_count += 1
+        if self._batch_count < self._grad_accumulation_steps:
+            return float(loss)
         if bool(loss == 0):
             return 0.0
-        loss.backward()
+        self._batch_count = 0
         torch.nn.utils.clip_grad_norm_(self._model.parameters(), 0.1)
         self._optimizer.step()
         self._optimizer.zero_grad()

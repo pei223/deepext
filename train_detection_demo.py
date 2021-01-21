@@ -66,7 +66,6 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
     train_transforms = AlbumentationsDetectionWrapperTransform([
         A.HorizontalFlip(),
         A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
-        A.CoarseDropout(max_height=int(setting.size[1] / 5), max_width=int(setting.size[0] / 5)),
         A.RandomBrightnessContrast(),
         ToTensorV2(),
     ], annotation_transform=VOCAnnotationTransform(class_index_dict))
@@ -126,12 +125,12 @@ if __name__ == "__main__":
     metric_ls = [DetectionIoUByClasses(dataset_setting.label_names), RecallAndPrecision(dataset_setting.label_names)]
     metric_for_graph = DetectionIoUByClasses(dataset_setting.label_names, val_key=DetailMetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=10,
-                                                        metric_for_graph=metric_for_graph,
                                                         save_filepath="detection_learning_curve.png")
     # Training.
     Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
                                                                             test_data_loader=test_dataloader,
                                                                             epochs=args.epoch,
+                                                                            metric_for_graph=metric_for_graph,
                                                                             callbacks=callbacks, metric_ls=metric_ls,
                                                                             lr_scheduler_func=lr_scheduler,
                                                                             calc_metrics_per_epoch=10)

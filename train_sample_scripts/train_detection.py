@@ -13,10 +13,10 @@ from deepext.models.object_detection import EfficientDetector
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
-from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator, MultiVOCDatasetFactory
+from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator, DatasetSplitter
 from deepext.metrics.object_detection import *
 from deepext.utils import try_cuda
-from deepext.utils.dataset_util import create_label_list_and_dict, create_train_test_indices
+from deepext.utils.dataset_util import create_label_list_and_dict
 
 load_dotenv("envs/detection.env")
 
@@ -53,27 +53,23 @@ ignore_indices = [255, ]
 train_transforms = AlbumentationsDetectionWrapperTransform([
     A.HorizontalFlip(),
     A.RandomResizedCrop(width=width, height=height, scale=(0.5, 2.0)),
-    A.CoarseDropout(max_height=int(height / 5), max_width=int(width / 5)),
     A.RandomBrightnessContrast(),
     ToTensorV2(),
-], annotation_transform=VOCAnnotationTransform(class_index_dict))
+])
 
 test_transforms = AlbumentationsDetectionWrapperTransform([
     A.Resize(width=width, height=height),
     ToTensorV2(),
-], annotation_transform=VOCAnnotationTransform(class_index_dict))
+])
 
 # dataset/dataloader
 if test_images_dir == "":
-    data_len = int(os.environ.get("DATA_LEN"))
     test_ratio = float(os.environ.get("TEST_RATIO"))
-    train_indices, test_indices = create_train_test_indices(data_len, test_ratio)
-    train_dataset, test_dataset = MultiVOCDatasetFactory(image_dir_path=train_images_dir,
-                                                         annotation_dir_path=train_annotations_dir,
-                                                         train_transforms=train_transforms,
-                                                         test_transforms=test_transforms,
-                                                         class_index_dict=class_index_dict) \
-        .create_train_test(train_indices, test_indices)
+    root_dataset = VOCDataset.create(image_dir_path=train_images_dir, annotation_dir_path=train_annotations_dir,
+                                     class_index_dict=class_index_dict, transforms=None)
+    train_dataset, test_dataset = DatasetSplitter().split_train_test(test_ratio, root_dataset,
+                                                                     train_transforms=train_transforms,
+                                                                     test_transforms=test_transforms)
 else:
     train_dataset = VOCDataset.create(image_dir_path=train_images_dir, annotation_dir_path=train_annotations_dir,
                                       transforms=train_transforms, class_index_dict=class_index_dict)
@@ -93,7 +89,7 @@ if load_weight_path and load_weight_path != "":
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir),
+callbacks = [ModelCheckout(per_epoch=int(epoch / 2), model=model, our_dir=saved_weights_dir),
              VisualizeRandomObjectDetectionResult(model, (height, width), test_dataset, per_epoch=5,
                                                   out_dir=progress_dir, label_names=label_names)]
 metric_ls = [DetectionIoUByClasses(label_names), RecallAndPrecision(label_names)]

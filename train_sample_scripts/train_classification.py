@@ -7,16 +7,16 @@ from albumentations.pytorch.transforms import ToTensorV2
 from dotenv import load_dotenv
 
 from deepext.layers.loss import ClassificationFocalLoss
-from deepext.data.dataset import CSVAnnotationDataset, CSVAnnotationMultiDatasetFactory
+from deepext.data.dataset import CSVAnnotationDataset, DatasetSplitter
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import ClassificationModel, AttentionClassificationModel
-from deepext.models.classification import EfficientNet
+from deepext.models.classification import EfficientNet, AttentionBranchNetwork
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateAttentionMapCallback
 from deepext.data.transforms import AlbumentationsImageWrapperTransform
 from deepext.metrics.classification import *
 from deepext.utils import *
-from deepext.utils.dataset_util import create_label_list_and_dict, create_train_test_indices
+from deepext.utils.dataset_util import create_label_list_and_dict
 
 load_dotenv("envs/classification.env")
 
@@ -65,22 +65,19 @@ test_transforms = AlbumentationsImageWrapperTransform(A.Compose([
 
 # dataset/dataloader
 if test_images_dir_path == "":
-    data_len = int(os.environ.get("DATA_LEN"))
     test_ratio = float(os.environ.get("TEST_RATIO"))
-    train_indices, test_indices = create_train_test_indices(data_len, test_ratio)
-    train_dataset, test_dataset = CSVAnnotationMultiDatasetFactory(images_dir=train_images_dir_path,
-                                                                   annotation_csv_filepath=train_annotation_file_path,
-                                                                   train_image_transform=train_transforms,
-                                                                   test_image_transform=test_transforms,
-                                                                   label_dict=label_dict) \
-        .create_train_test(train_indices, test_indices)
+    root_dataset = CSVAnnotationDataset.create(train_images_dir_path,
+                                               transforms=None,
+                                               annotation_csv_filepath=train_annotation_file_path)
+    train_dataset, test_dataset = DatasetSplitter().split_train_test(test_ratio, root_dataset,
+                                                                     train_transforms, test_transforms)
 else:
     train_dataset = CSVAnnotationDataset.create(image_dir=train_images_dir_path,
                                                 annotation_csv_filepath=train_annotation_file_path,
-                                                image_transform=train_transforms)
+                                                transforms=train_transforms)
     test_dataset = CSVAnnotationDataset.create(image_dir=test_images_dir_path,
                                                annotation_csv_filepath=test_annotation_file_path,
-                                               image_transform=test_transforms)
+                                               transforms=test_transforms)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -88,12 +85,14 @@ test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 # TODO Model detail params
 voc_focal_loss = ClassificationFocalLoss(n_classes)
 model: ClassificationModel = try_cuda(EfficientNet(num_classes=n_classes, network='efficientnet-b0'))
+# model: ClassificationModel = try_cuda(AttentionBranchNetwork(n_classes=n_classes, backbone=BackBoneKey.RESNET_18))
+
 if load_weight_path and load_weight_path != "":
     model.load_weight(load_weight_path)
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir_path)]
+callbacks = [ModelCheckout(per_epoch=int(epoch / 2), model=model, our_dir=saved_weights_dir_path)]
 if isinstance(model, AttentionClassificationModel):
     callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=progress_dir, per_epoch=5,
                                                   dataset=test_dataset, label_names=label_names))

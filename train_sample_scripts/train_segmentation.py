@@ -7,7 +7,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 from dotenv import load_dotenv
 
 from deepext.layers.loss import SegmentationFocalLoss
-from deepext.data.dataset import IndexImageDataset, IndexImageMultiDatasetFactory
+from deepext.data.dataset import IndexImageDataset, DatasetSplitter
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
@@ -16,7 +16,6 @@ from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCa
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
 from deepext.metrics.segmentation import *
 from deepext.utils import *
-from deepext.utils.dataset_util import create_train_test_indices
 
 load_dotenv("envs/segmentation.env")
 
@@ -68,14 +67,13 @@ test_transforms = AlbumentationsSegmentationWrapperTransform(A.Compose([
 
 # dataset/dataloader
 if test_images_dir == "":
-    data_len = int(os.environ.get("DATA_LEN"))
     test_ratio = float(os.environ.get("TEST_RATIO"))
-    train_indices, test_indices = create_train_test_indices(data_len, test_ratio)
-    train_dataset, test_dataset = IndexImageMultiDatasetFactory(image_dir_path=train_images_dir,
-                                                                index_image_dir_path=train_annotations_dir,
-                                                                train_transforms=train_transforms,
-                                                                test_transforms=test_transforms) \
-        .create_train_test(train_indices, test_indices)
+    root_dataset = IndexImageDataset.create(train_images_dir, train_annotations_dir,
+                                            transforms=None)
+    train_dataset, test_dataset = DatasetSplitter().split_train_test(test_ratio,
+                                                                     root_dataset,
+                                                                     train_transforms=train_transforms,
+                                                                     test_transforms=test_transforms)
 else:
     train_dataset = IndexImageDataset.create(image_dir_path=train_images_dir,
                                              index_image_dir_path=train_annotations_dir,
@@ -95,7 +93,7 @@ if load_weight_path and load_weight_path != "":
 
 # TODO Train detail params
 # Metrics/Callbacks
-callbacks = [ModelCheckout(per_epoch=int(epoch / 5), model=model, our_dir=saved_weights_dir),
+callbacks = [ModelCheckout(per_epoch=int(epoch / 2), model=model, our_dir=saved_weights_dir),
              GenerateSegmentationImageCallback(output_dir=progress_dir, per_epoch=5, model=model,
                                                dataset=test_dataset)]
 metric_ls = [SegmentationIoUByClasses(label_names), SegmentationRecallPrecision(label_names)]
