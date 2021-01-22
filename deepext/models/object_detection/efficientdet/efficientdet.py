@@ -22,7 +22,7 @@ class EfficientDetector(DetectionModel):
                                             backbone_pretrained=backbone_pretrained))
         self._num_classes = num_classes
         self._network = network
-        self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
+        self._optimizer = optim.Adagrad(self._model.parameters(), lr=lr)
         self._score_threshold = score_threshold
         self._max_detections = max_detections
         self._grad_accumulation_steps = grad_accumulation_steps

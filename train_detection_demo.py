@@ -6,7 +6,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 from deepext.models.base import DetectionModel
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
-from deepext.models.object_detection import EfficientDetector, SSD
+from deepext.models.object_detection import EfficientDetector
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
 from deepext.metrics.object_detection import *
@@ -26,10 +26,6 @@ def build_efficientdet(dataset_setting, args):
 #
 # def build_m2det(dataset_setting, args):
 #     return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
-
-
-def build_ssd(dataset_setting, args):
-    return SSD(num_classes=dataset_setting.n_classes, input_size=args.image_size, lr=args.lr)
 
 
 def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
@@ -53,7 +49,6 @@ DATASET_DICT = {
 MODEL_DICT = {
     "efficientdet": build_efficientdet,
     # "m2det": build_m2det,
-    "ssd": build_ssd,
 }
 
 
