@@ -137,7 +137,7 @@ if __name__ == "__main__":
     Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
                                                                             test_data_loader=test_dataloader,
                                                                             epochs=args.epoch, callbacks=callbacks,
-                                                                            lr_scheduler_func=lr_scheduler,
+                                                                            epoch_lr_scheduler_func=lr_scheduler,
                                                                             metric_for_graph=metric_for_graph,
                                                                             metric_ls=metric_ls,
                                                                             calc_metrics_per_epoch=5)

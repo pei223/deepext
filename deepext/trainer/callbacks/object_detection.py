@@ -2,6 +2,7 @@ from typing import Tuple, List
 
 import numpy as np
 from torch.utils.data import Dataset
+from pathlib import Path
 from . import ModelCallback
 from ...models.base import DetectionModel
 from ...utils import image_utils, draw_bounding_boxes_with_name_tag
@@ -29,17 +30,17 @@ class VisualizeRandomObjectDetectionResult(ModelCallback):
         self._img_size = img_size
         self._label_names = label_names
         self._apply_all_images = apply_all_images
+        if not Path(self._out_dir).exists():
+            Path(self._out_dir).mkdir()
 
     def __call__(self, epoch: int):
         if (epoch + 1) % self._per_epoch != 0:
             return
         if self._apply_all_images:
-            i = 1
-            for img_tensor, teacher_bboxes in self._dataset:
+            for i, (img_tensor, teacher_bboxes) in enumerate(self._dataset):
                 _, result_img = self._model.calc_detection_image(img_tensor, label_names=self._label_names)
                 result_img = self._draw_teacher_bboxes(result_img, teacher_bboxes=teacher_bboxes)
                 image_utils.cv_to_pil(result_img).save(f"{self._out_dir}/data{i}_image{epoch + 1}.png")
-                i += 1
             return
         data_len = len(self._dataset)
         random_image_index = np.random.randint(0, data_len)

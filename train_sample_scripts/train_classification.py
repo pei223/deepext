@@ -38,11 +38,6 @@ batch_size = int(os.environ.get("BATCH_SIZE"))
 lr = float(os.environ.get("LR"))
 epoch = int(os.environ.get("EPOCH"))
 
-if not Path(progress_dir).exists():
-    Path(progress_dir).mkdir()
-if not Path(saved_weights_dir_path).exists():
-    Path(saved_weights_dir_path).mkdir()
-
 label_names, label_dict = create_label_list_and_dict(label_file_path)
 
 # TODO Learning detail params
@@ -105,7 +100,7 @@ learning_curve_visualizer = LearningCurveVisualizer(metric_name="Accuracy", igno
 Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
                                                                         test_data_loader=test_dataloader,
                                                                         epochs=epoch, callbacks=callbacks,
-                                                                        lr_scheduler_func=lr_scheduler,
+                                                                        epoch_lr_scheduler_func=lr_scheduler,
                                                                         metric_ls=metric_ls,
                                                                         metric_for_graph=metric_for_graph,
                                                                         calc_metrics_per_epoch=5)

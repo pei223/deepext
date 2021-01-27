@@ -28,7 +28,9 @@ class Trainer:
 
     def fit(self, train_data_loader: DataLoader, epochs: int, test_data_loader: DataLoader = None,
             callbacks: List[ModelCallback] = None, metric_ls: List[BaseMetric] = None,
-            metric_for_graph: BaseMetric = None, lr_scheduler_func: Callable[[int, ], float] = None,
+            metric_for_graph: BaseMetric = None,
+            epoch_lr_scheduler_func: Callable[[int, ], float] = None,
+            loss_lr_scheduler=None,
             calc_metrics_per_epoch: int = 5, required_train_metric=False):
         """
         :param train_data_loader: DataLoader for training
@@ -37,22 +39,30 @@ class Trainer:
         :param callbacks:
         :param metric_ls: 指標リスト
         :param metric_for_graph:
-        :param lr_scheduler_func: 学習率スケジューリング関数
+        :param epoch_lr_scheduler_func: エポックを引数にした学習率スケジューリング関数
+        :param loss_lr_scheduler: Lossを引数にした学習率スケジューリング
         :param calc_metrics_per_epoch: 何エポックごとに指標を計算するか
         :param required_train_metric: 訓練データの指標も出力するかどうか
         """
+        if loss_lr_scheduler is not None and epoch_lr_scheduler_func is not None:
+            raise ValueError("Learning rate scheduler must be one.")
+        if loss_lr_scheduler is not None and not hasattr(loss_lr_scheduler, "step"):
+            raise AttributeError("loss_lr_scheduler is required step function.")
+
         callbacks, metric_ls = callbacks or [], metric_ls or []
         self._writer.out_training_start(str(self._model.get_model_config()))
 
         test_metric_for_graph = metric_for_graph
         train_metric_for_graph = metric_for_graph.clone_empty()
 
-        lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self._model.get_optimizer(),
-                                                         lr_lambda=lr_scheduler_func) if lr_scheduler_func else None
+        epoch_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self._model.get_optimizer(),
+                                                               lr_lambda=epoch_lr_scheduler_func) \
+            if epoch_lr_scheduler_func else None
         for epoch in range(epochs):
             start = time.time()
             mean_loss = self.train_epoch(train_data_loader)
-            lr_scheduler.step(epoch + 1) if lr_scheduler else None
+            loss_lr_scheduler.step(mean_loss) if loss_lr_scheduler else None
+            epoch_lr_scheduler.step(epoch + 1) if epoch_lr_scheduler else None
             self._visualizer.add_loss(mean_loss) if self._visualizer else None
             self._writer.out_epoch(epoch, max_epoch=epochs, elapsed_time=time.time() - start, mean_loss=mean_loss)
             for callback in callbacks:

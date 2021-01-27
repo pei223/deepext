@@ -2,6 +2,7 @@ import numpy as np
 from typing import List
 from torch.utils.data import Dataset
 import tqdm
+from pathlib import Path
 
 from . import ModelCallback
 from ...utils import try_cuda, image_utils
@@ -22,16 +23,16 @@ class GenerateAttentionMapCallback(ModelCallback):
         self._model = model
         self._label_names = label_names
         self._apply_all_images = apply_all_images
+        if not Path(self._out_dir).exists():
+            Path(self._out_dir).mkdir()
 
     def __call__(self, epoch: int):
         if (epoch + 1) % self._per_epoch != 0:
             return
         if self._apply_all_images:
-            i = 1
-            for img_tensor, label in self._dataset:
+            for i, (img_tensor, label) in enumerate(self._dataset):
                 pred_label, attention_image = self._model.predict_label_and_heatmap(img_tensor)
                 image_utils.cv_to_pil(attention_image).save(self._image_path(epoch, pred_label, label, f"data{i}_"))
-                i += 1
             return
         data_len = len(self._dataset)
         random_image_index = np.random.randint(0, data_len)

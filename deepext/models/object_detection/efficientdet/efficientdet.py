@@ -12,18 +12,18 @@ __all__ = ['EfficientDetector']
 
 class EfficientDetector(DetectionModel):
     def __init__(self, num_classes, network='efficientdet-d0', lr=1e-4, score_threshold=0.5, max_detections=100,
-                 backbone_path: str = None, backbone_pretrained=True, grad_accumulation_steps=8):
+                 backbone_path: str = None, backbone_pretrained=True, grad_accumulation_steps=1):
         super().__init__()
         self._model = try_cuda(EfficientDet(num_classes=num_classes,
                                             network=network,
                                             W_bifpn=EFFICIENTDET[network]['W_bifpn'],
                                             D_bifpn=EFFICIENTDET[network]['D_bifpn'],
                                             D_class=EFFICIENTDET[network]['D_class'], backbone_path=backbone_path,
-                                            backbone_pretrained=backbone_pretrained))
+                                            backbone_pretrained=backbone_pretrained,
+                                            threshold=score_threshold))
         self._num_classes = num_classes
         self._network = network
-        self._optimizer = optim.Adagrad(self._model.parameters(), lr=lr)
-        self._score_threshold = score_threshold
+        self._optimizer = optim.AdamW(self._model.parameters(), lr=lr)
         self._max_detections = max_detections
         self._grad_accumulation_steps = grad_accumulation_steps
         self._batch_count = 0
@@ -36,7 +36,6 @@ class EfficientDetector(DetectionModel):
         self._model.train()
         self._model.is_training = True
         self._model.freeze_bn()
-        self._optimizer.zero_grad()
 
         images = try_cuda(inputs)
         annotations = torch.tensor(teachers) if not isinstance(teachers, torch.Tensor) else teachers
@@ -45,12 +44,12 @@ class EfficientDetector(DetectionModel):
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()
         loss = classification_loss + regression_loss
-        loss.backward()
         self._batch_count += 1
         if self._batch_count < self._grad_accumulation_steps:
             return float(loss)
         if bool(loss == 0):
             return 0.0
+        loss.backward()
         self._batch_count = 0
         torch.nn.utils.clip_grad_norm_(self._model.parameters(), 0.1)
         self._optimizer.step()
@@ -67,8 +66,6 @@ class EfficientDetector(DetectionModel):
         batch_size = inputs.shape[0]
 
         result = []
-        all_detections = [[None for i in range(self._num_classes)] for j in range(batch_size)]
-
         with torch.no_grad():
             for i in range(batch_size):
                 image = inputs[i].float().unsqueeze(0)
@@ -76,24 +73,18 @@ class EfficientDetector(DetectionModel):
                 scores = scores.cpu().numpy()
                 labels = labels.cpu().numpy()
                 boxes = boxes.cpu().numpy()
-                indices = np.where(scores > self._score_threshold)[0]
-                if indices.shape[0] > 0:
-                    scores = scores[indices]
-                    scores_sort = np.argsort(-scores)[:self._max_detections]
-                    # select detections
-                    image_boxes = boxes[indices[scores_sort], :]
-                    image_scores = scores[scores_sort]
-                    image_labels = labels[indices[scores_sort]]
-                    image_detections = np.concatenate([
-                        image_boxes,
-                        np.expand_dims(image_scores, axis=1),
-                        np.expand_dims(image_labels, axis=1)
-                    ], axis=1)
+                scores_sort = np.argsort(-scores)[:self._max_detections]
+                # select detections
+                image_boxes = boxes[scores_sort, :]
+                image_scores = scores[scores_sort]
+                image_labels = labels[scores_sort]
+                image_detections = np.concatenate([
+                    image_boxes,
+                    np.expand_dims(image_labels, axis=1),
+                    np.expand_dims(image_scores, axis=1),
+                ], axis=1)
 
-                    # copy detections to all_detections
-                    for label in range(self._num_classes):
-                        all_detections[i][label] = image_detections[image_detections[:, -1] == label, :-1]
-                result.append(self._arrange_result(all_detections[i]))
+                result.append(image_detections[:, :-1])
         return np.asarray(result)
 
     def _arrange_result(self, bboxes_by_classes):

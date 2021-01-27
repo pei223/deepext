@@ -2,10 +2,10 @@
 ## Classification
 ### Training input
 - image: Tensor (batch size, channel, height, width)
-- annotation: Tensor (batch size, )
+- annotation: Tensor (batch size, classes)
 
 ### Training output
-- Tensor (batch size, class)
+- Tensor (batch size, classes)
 
 ### Predict
 - Numpy array (batch size, classes)
@@ -17,13 +17,16 @@
 ## Segmentation
 ### Training input
 - image: Tensor (batch size, channel, height, width)
-- annotation: Tensor (batch size, class, height, width)
+- annotation: Tensor (batch size, classes, height, width)
+    - <b>include background class</b>
 
 ### Training output
-- Tensor (batch size, class, height, width)
+- Tensor (batch size, classes, height, width)
+    - <b>include background class</b>
 
 ### Predict
-- Numpy array(batch size, class, height, width)
+- Numpy array(batch size, classes, height, width)
+    - <b>include background class</b>
 
 
 <br/><br/>
@@ -34,14 +37,18 @@
 - image: Tensor (batch size, channel, height, width)
 - annotation: Tensor (batch size, bounding box count, 5)
     - bounding box contains (x_min, y_min, x_max, y_max, class label)
+    - if no object, bounding box and label is -1
+    - <b>NOT include background class</b>
+    
 
 ### Training output
-- Tuple (bounding box count, ), (bounding box count, ), (bounding box count, 4)
-    - scores, classes, coordinates
-    
+- Unspecified
+    - Example: Tuple (bounding box count, ), (bounding box count, ), (bounding box count, 4)
+        - scores, classes, coordinates
+        
 ### Predict
-- Numpy array (batch size, bounding box count by batch(variable length), 5)
-    - bounding box contains (x_min, y_min, x_max, y_max, label)
+- Numpy array (batch size, bounding box count by batch(variable length), 6)
+    - bounding box contains (x_min, y_min, x_max, y_max, label, score)
 
 
 <br/><br/>

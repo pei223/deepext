@@ -60,8 +60,8 @@ def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> T
 
     train_transforms = AlbumentationsDetectionWrapperTransform([
         A.HorizontalFlip(),
-        A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
-        A.RandomBrightnessContrast(),
+        A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.8, 1.), p=1.),
+        # A.Resize(width=setting.size[0], height=setting.size[1]),
         ToTensorV2(),
     ], annotation_transform=VOCAnnotationTransform(class_index_dict))
     test_transforms = AlbumentationsDetectionWrapperTransform([
@@ -111,8 +111,10 @@ if __name__ == "__main__":
                                                                                     args.batch_size)
 
     # Training setting.
-    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
+    # lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=5, verbose=True)
+
+    callbacks = [ModelCheckout(per_epoch=int(args.epoch / 2), model=model, our_dir="saved_weights")]
     if args.progress_dir:
         callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=5,
                                                               out_dir=args.progress_dir,
@@ -127,5 +129,5 @@ if __name__ == "__main__":
                                                                             epochs=args.epoch,
                                                                             metric_for_graph=metric_for_graph,
                                                                             callbacks=callbacks, metric_ls=metric_ls,
-                                                                            lr_scheduler_func=lr_scheduler,
+                                                                            loss_lr_scheduler=lr_scheduler,
                                                                             calc_metrics_per_epoch=10)
