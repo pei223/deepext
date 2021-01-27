@@ -71,7 +71,7 @@ INDEXED_COLOR_PALETTE = np.array(INDEXED_COLOR_PALETTE).reshape((-1, 3))
 
 
 def draw_bounding_boxes_with_name_tag(origin_image: np.ndarray, bounding_boxes: Iterable[Iterable[float]], text: str,
-                                      is_bbox_norm=False, thickness=1, color=(0, 0, 255)):
+                                      is_bbox_norm=False, thickness=1, color=(0, 0, 255), text_color=(0, 0, 0)):
     image = origin_image.copy()
     height, width = image.shape[:2]
     for bounding_box in bounding_boxes:
@@ -85,7 +85,8 @@ def draw_bounding_boxes_with_name_tag(origin_image: np.ndarray, bounding_boxes: 
             y_max *= height
         x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
         image = cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, thickness)
-        image = draw_text_with_background(image, text=text, offsets=(x_min, y_min), background_color=color)
+        image = draw_text_with_background(image, text=text, offsets=(x_min, y_min), background_color=color,
+                                          text_color=text_color)
     return image
 
 

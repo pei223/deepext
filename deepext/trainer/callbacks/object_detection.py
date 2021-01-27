@@ -8,7 +8,7 @@ from ...models.base import DetectionModel
 from ...utils import image_utils, draw_bounding_boxes_with_name_tag
 
 
-class VisualizeRandomObjectDetectionResult(ModelCallback):
+class GenerateDetectionImageCallback(ModelCallback):
     def __init__(self, model: DetectionModel, img_size: Tuple[int, int], dataset: Dataset, out_dir: str,
                  label_names: List[str], per_epoch: int = 10, pred_color=(0, 0, 255), teacher_color=(0, 255, 0),
                  apply_all_images=False):

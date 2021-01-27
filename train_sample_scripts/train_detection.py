@@ -1,4 +1,3 @@
-from pathlib import Path
 import os
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
@@ -14,9 +13,9 @@ from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import DetectionModel
 from deepext.models.object_detection import EfficientDetector
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
-from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
+from deepext.trainer.callbacks import ModelCheckout, GenerateDetectionImageCallback
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
-from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator, DatasetSplitter
+from deepext.data.dataset import AdjustDetectionTensorCollator, DatasetSplitter
 from deepext.metrics.object_detection import *
 from deepext.utils import try_cuda
 from deepext.utils.dataset_util import create_label_list_and_dict
@@ -43,22 +42,18 @@ epoch = int(os.environ.get("EPOCH"))
 
 label_names, class_index_dict = create_label_list_and_dict(label_file_path)
 
-# TODO Learning detail params
-lr_scheduler = CosineDecayScheduler(max_lr=lr, max_epochs=epoch, warmup_epochs=0)
-lr_scheduler = None
 ignore_indices = [255, ]
 
 # TODO Data augmentation
 train_transforms = AlbumentationsDetectionWrapperTransform([
     A.HorizontalFlip(),
-    A.RandomResizedCrop(width=width, height=height, scale=(0.8, 1.2)),
+    A.RandomResizedCrop(width=width, height=height, scale=(0.8, 1.)),
     A.OneOf([
+        A.Blur(blur_limit=5),
         A.RandomBrightnessContrast(),
         A.RandomGamma(), ]),
-    A.Blur(),
     ToTensorV2(),
 ])
-
 test_transforms = AlbumentationsDetectionWrapperTransform([
     A.Resize(width=width, height=height),
     ToTensorV2(),
@@ -89,11 +84,17 @@ model: DetectionModel = try_cuda(EfficientDetector(num_classes=n_classes, lr=lr,
 if load_weight_path and load_weight_path != "":
     model.load_weight(load_weight_path)
 
+# TODO Learning detail params
+# epoch_lr_scheduler = CosineDecayScheduler(max_lr=lr, max_epochs=epoch, warmup_epochs=0)
+# loss_lr_scheduler = None
+epoch_lr_scheduler = None
+loss_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=5, verbose=True)
+
 # TODO Train detail params
 # Metrics/Callbacks
 callbacks = [ModelCheckout(per_epoch=int(epoch / 2), model=model, our_dir=saved_weights_dir),
-             VisualizeRandomObjectDetectionResult(model, (height, width), test_dataset, per_epoch=5,
-                                                  out_dir=progress_dir, label_names=label_names)]
+             GenerateDetectionImageCallback(model, (height, width), test_dataset, per_epoch=5,
+                                            out_dir=progress_dir, label_names=label_names)]
 metric_ls = [DetectionIoUByClasses(label_names), RecallAndPrecision(label_names)]
 metric_for_graph = DetectionIoUByClasses(label_names, val_key=DetailMetricKey.KEY_AVERAGE)
 learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=10,
@@ -103,7 +104,8 @@ learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_e
 Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
                                                                         test_data_loader=test_dataloader,
                                                                         epochs=epoch, callbacks=callbacks,
-                                                                        epoch_lr_scheduler_func=lr_scheduler,
+                                                                        loss_lr_scheduler=loss_lr_scheduler,
+                                                                        epoch_lr_scheduler_func=epoch_lr_scheduler,
                                                                         metric_for_graph=metric_for_graph,
                                                                         metric_ls=metric_ls,
                                                                         calc_metrics_per_epoch=5)

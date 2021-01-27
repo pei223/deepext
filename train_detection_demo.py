@@ -8,84 +8,71 @@ from deepext.models.base import DetectionModel
 from deepext.data.transforms import AlbumentationsDetectionWrapperTransform
 from deepext.models.object_detection import EfficientDetector
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
-from deepext.trainer.callbacks import ModelCheckout, VisualizeRandomObjectDetectionResult
+from deepext.trainer.callbacks import ModelCheckout, GenerateDetectionImageCallback
 from deepext.metrics.object_detection import *
 from deepext.metrics import DetailMetricKey
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 
-from util import DataSetSetting
+from dataset_info import DATASET_INFO
+
+VALID_MODEL_KEYS = ["efficientdet"]
 
 
 # NOTE モデル・データセットはここを追加
-def build_efficientdet(dataset_setting, args):
-    return EfficientDetector(num_classes=dataset_setting.n_classes, lr=args.lr,
-                             network=f"efficientdet-d{args.efficientdet_scale}", score_threshold=0.5)
+def build_model(args, n_classes) -> DetectionModel:
+    if args.model == "efficientdet":
+        return EfficientDetector(num_classes=n_classes, lr=args.lr,
+                                 network=f"efficientdet-d{args.efficientdet_scale}", score_threshold=0.5)
+    raise RuntimeError(f"Invalid model name: {args.model}")
 
 
-#
-# def build_m2det(dataset_setting, args):
-#     return M2Det(num_classes=dataset_setting.n_classes, input_size=dataset_setting.size)
-
-
-def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
-    train_dataset = torchvision.datasets.VOCDetection(root=root_dir, download=True, year=year,
-                                                      transforms=train_transforms, image_set='train')
-    test_dataset = torchvision.datasets.VOCDetection(root=root_dir, download=True, year=year,
-                                                     transforms=test_transforms, image_set='trainval')
-    return train_dataset, test_dataset
-
-
-voc_classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
-               "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
-DATASET_DICT = {
-    "voc2012": DataSetSetting(dataset_type="voc2012", size=(512, 512), n_classes=20, label_names=voc_classes,
-                              dataset_build_func=lambda root_dir, train_transforms, test_transforms, class_index_dict:
-                              build_voc_dataset("2012", root_dir, train_transforms, test_transforms)),
-    "voc2007": DataSetSetting(dataset_type="voc2007", size=(512, 512), n_classes=20, label_names=voc_classes,
-                              dataset_build_func=lambda root_dir, train_transforms, test_transforms, class_index_dict:
-                              build_voc_dataset("2007", root_dir, train_transforms, test_transforms)),
-}
-MODEL_DICT = {
-    "efficientdet": build_efficientdet,
-    # "m2det": build_m2det,
-}
-
-
-def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
-    DataLoader, DataLoader, Dataset, Dataset]:
-    class_index_dict = {}
-    for i, label_name in enumerate(setting.label_names):
-        class_index_dict[label_name] = i
-
+def build_transforms(args, class_index_dict: Dict[str, int]) -> Tuple[any, any]:
     train_transforms = AlbumentationsDetectionWrapperTransform([
         A.HorizontalFlip(),
-        A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.8, 1.), p=1.),
+        A.RandomResizedCrop(width=args.image_size, height=args.image_size, scale=(0.8, 1.), p=1.),
         # A.Resize(width=setting.size[0], height=setting.size[1]),
         ToTensorV2(),
     ], annotation_transform=VOCAnnotationTransform(class_index_dict))
     test_transforms = AlbumentationsDetectionWrapperTransform([
-        A.Resize(setting.size[0], setting.size[1]),
+        A.Resize(width=args.image_size, height=args.image_size),
         ToTensorV2(),
     ], annotation_transform=VOCAnnotationTransform(class_index_dict))
+    return train_transforms, test_transforms
 
-    train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms,
-                                                             class_index_dict)
-    return DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
+
+def build_dataset(args, train_transforms, test_transforms) -> Tuple[Dataset, Dataset]:
+    if args.dataset == "voc2012":
+        train_dataset = torchvision.datasets.VOCDetection(root=args.dataset_root, download=True, year="2012",
+                                                          transforms=train_transforms, image_set='trainval')
+        test_dataset = torchvision.datasets.VOCDetection(root=args.dataset_root, download=True, year="2012",
+                                                         transforms=test_transforms, image_set='trainval')
+        return train_dataset, test_dataset
+    elif args.dataset == "voc2007":
+        train_dataset = torchvision.datasets.VOCDetection(root=args.dataset_root, download=True, year="2007",
+                                                          transforms=train_transforms, image_set='trainval')
+        test_dataset = torchvision.datasets.VOCDetection(root=args.dataset_root, download=True, year="2007",
+                                                         transforms=test_transforms, image_set='test')
+        return train_dataset, test_dataset
+    raise RuntimeError(f"Invalid dataset name: {args.dataset_root}")
+
+
+def build_data_loader(args, train_dataset: Dataset, test_dataset: Dataset) -> Tuple[DataLoader, DataLoader]:
+    return DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                       collate_fn=AdjustDetectionTensorCollator()), \
-           DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
-                      collate_fn=AdjustDetectionTensorCollator()), train_dataset, test_dataset
+           DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True,
+                      collate_fn=AdjustDetectionTensorCollator())
 
 
 parser = argparse.ArgumentParser(description='Pytorch Image detection training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DATASET_DICT.keys())}')
+parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DATASET_INFO.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
-parser.add_argument('--model', type=str, default="efficientdet", help=f"Model type in {list(MODEL_DICT.keys())}")
+parser.add_argument('--model', type=str, default="efficientdet", help=f"Model type in {VALID_MODEL_KEYS}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--efficientdet_scale', type=int, default=0, help="Number of scale of EfficientDet.")
@@ -94,40 +81,46 @@ parser.add_argument('--image_size', type=int, default=256, help="Image size(defa
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    # Fetch dataset.
-    dataset_setting = DATASET_DICT.get(args.dataset)
-    assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
-    img_size = (args.image_size, args.image_size)
-    dataset_setting.set_size(img_size)
+    dataset_info = DATASET_INFO.get(args.dataset)
+    if dataset_info is None:
+        raise ValueError(f"Invalid dataset name - {args.dataset}.  Required [{list(DATASET_INFO.keys())}]")
+
+    label_names = dataset_info["label_names"]
+    class_index_dict = {}
+    for i, label_name in enumerate(label_names):
+        class_index_dict[label_name] = i
+
+    train_transforms, test_transforms = build_transforms(args, class_index_dict)
 
     # Fetch model and load weight.
-    build_model_func = MODEL_DICT.get(args.model)
-    assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
-    model: DetectionModel = try_cuda(build_model_func(dataset_setting, args))
+    model = try_cuda(build_model(args, dataset_info["n_classes"]))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
 
-    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
-                                                                                    args.batch_size)
+    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
+    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
 
     # Training setting.
-    # lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=5, verbose=True)
+    # epoch_lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
+    # loss_lr_scheduler = None
+    loss_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=5, verbose=True)
+    epoch_lr_scheduler = None
 
     callbacks = [ModelCheckout(per_epoch=int(args.epoch / 2), model=model, our_dir="saved_weights")]
     if args.progress_dir:
-        callbacks.append(VisualizeRandomObjectDetectionResult(model, dataset_setting.size, test_dataset, per_epoch=5,
-                                                              out_dir=args.progress_dir,
-                                                              label_names=dataset_setting.label_names))
-    metric_ls = [DetectionIoUByClasses(dataset_setting.label_names), RecallAndPrecision(dataset_setting.label_names)]
-    metric_for_graph = DetectionIoUByClasses(dataset_setting.label_names, val_key=DetailMetricKey.KEY_AVERAGE)
-    learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=10,
+        callbacks.append(GenerateDetectionImageCallback(model, args.image_size, test_dataset, per_epoch=5,
+                                                        out_dir=args.progress_dir,
+                                                        label_names=label_names))
+    metric_ls = [DetectionIoUByClasses(label_names), RecallAndPrecision(label_names)]
+    metric_for_graph = DetectionIoUByClasses(label_names, val_key=DetailMetricKey.KEY_AVERAGE)
+    learning_curve_visualizer = LearningCurveVisualizer(metric_name="IoU average", ignore_epoch=10,
                                                         save_filepath="detection_learning_curve.png")
     # Training.
-    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
-                                                                            test_data_loader=test_dataloader,
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_data_loader,
+                                                                            test_data_loader=test_data_loader,
                                                                             epochs=args.epoch,
                                                                             metric_for_graph=metric_for_graph,
                                                                             callbacks=callbacks, metric_ls=metric_ls,
-                                                                            loss_lr_scheduler=lr_scheduler,
+                                                                            loss_lr_scheduler=loss_lr_scheduler,
+                                                                            epoch_lr_scheduler_func=epoch_lr_scheduler,
                                                                             calc_metrics_per_epoch=10)

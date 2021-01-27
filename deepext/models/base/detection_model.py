@@ -1,12 +1,11 @@
-from typing import List, Union
-from PIL import Image
+from typing import List, Union, Tuple
 import torch
 import numpy as np
 import cv2
 
 from .base_model import BaseModel
-from ...utils.tensor_util import try_cuda, img_to_tensor
-from ...utils.image_utils import *
+from ...utils.tensor_util import try_cuda
+from ...utils.image_utils import draw_bounding_boxes_with_name_tag
 
 
 class DetectionModel(BaseModel):
@@ -71,6 +70,9 @@ class DetectionModel(BaseModel):
         for bbox in bboxes:
             if bbox is None or len(bbox) == 0:
                 continue
+            score = int(bbox[5] * 100.)
+            label_name = label_names[int(bbox[4])]
+            bbox_text = f"{label_name} {score}%"
             image = draw_bounding_boxes_with_name_tag(image, bboxes, color=pred_color,
-                                                      text=label_names[int(bbox[-1])])
+                                                      text=bbox_text)
         return image

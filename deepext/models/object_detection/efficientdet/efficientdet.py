@@ -84,7 +84,7 @@ class EfficientDetector(DetectionModel):
                     np.expand_dims(image_scores, axis=1),
                 ], axis=1)
 
-                result.append(image_detections[:, :-1])
+                result.append(image_detections)
         return np.asarray(result)
 
     def _arrange_result(self, bboxes_by_classes):
