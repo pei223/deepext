@@ -1,13 +1,40 @@
 from typing import Tuple
 from abc import abstractmethod
+import torch
 import numpy as np
+import cv2
 from .base_model import BaseModel
-from ...utils.tensor_util import try_cuda, img_to_tensor
-from ...utils.image_utils import *
+from ...utils.tensor_util import try_cuda
+from ...utils.image_utils import combine_heatmap
 
 
 class ClassificationModel(BaseModel):
-    def predict_label(self, img: torch.Tensor or np.ndarray, require_normalize=False) -> int:
+    def predict_label(self, img: torch.Tensor or np.ndarray, require_normalize=False) -> Tuple[int, np.ndarray]:
+        """
+        :param img: (batch size, channels, height, width)
+        :param require_normalize:
+        :return: Class num, probabilities array
+        """
+        # NOTE Override if needed.
+        result = self._predict(img, require_normalize)
+        result = self._numpy_softmax(result)
+        label = np.argmax(result)
+        return label, result
+
+    def predict_multi_class(self, img: torch.Tensor or np.ndarray, threshold=0.5, require_normalize=False) \
+            -> Tuple[np.ndarray, np.ndarray]:
+        """
+        :param img: (batch size, channels, height, width)
+        :param threshold:
+        :param require_normalize:
+        :return: Class num array, probabilities array
+        """
+        result = self._predict(img, require_normalize)
+        result = self._numpy_sigmoid(result)
+        class_result = np.where(result > threshold)[0]
+        return class_result, result
+
+    def _predict(self, img: torch.Tensor or np.ndarray, require_normalize):
         """
         :param img: (batch size, channels, height, width)
         :return: Class num
@@ -24,8 +51,15 @@ class ClassificationModel(BaseModel):
             img_tensor = img_tensor.float() / 255.
         img_tensor = try_cuda(img_tensor)
         img_tensor = img_tensor.view(-1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2])
+        return self.predict(img_tensor)[0]
 
-        return self.predict(img_tensor)[0].argmax()
+    def _numpy_softmax(self, x: np.ndarray) -> np.ndarray:
+        assert x.ndim == 1
+        u = np.sum(np.exp(x))
+        return np.exp(x) / u
+
+    def _numpy_sigmoid(self, x) -> np.ndarray:
+        return 1 / (1 + np.exp(-x))
 
 
 class AttentionClassificationModel(ClassificationModel):

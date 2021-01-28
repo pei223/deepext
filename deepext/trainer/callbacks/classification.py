@@ -62,5 +62,5 @@ class CSVClassificationResultCallback(ModelCallback):
             file.write("number,predict class,teacher class,predict name,teacher name\n")
             for i, datum in enumerate(tqdm.tqdm(self._dataset)):
                 image, label = datum
-                pred = self._model.predict_label(image)
+                pred = self._model.predict_label(image)[0]
                 file.write(f"{i},{pred},{label},{self._label_names[pred]},{self._label_names[label]}\n")

@@ -8,7 +8,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 from deepext.models.base import DetectionModel
 from deepext.models.object_detection import EfficientDetector
 from deepext.data.dataset import ImageOnlyDataset
-from deepext.data.transforms import AlbumentationsImageWrapperTransform
+from deepext.data.transforms import AlbumentationsClsWrapperTransform
 from deepext.utils import try_cuda
 from deepext.utils.dataset_util import create_label_list_and_dict
 
@@ -26,7 +26,7 @@ if not Path(result_dir_path).exists():
 
 label_names, label_dict = create_label_list_and_dict(label_file_path)
 
-transforms = AlbumentationsImageWrapperTransform(A.Compose([
+transforms = AlbumentationsClsWrapperTransform(A.Compose([
     A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))

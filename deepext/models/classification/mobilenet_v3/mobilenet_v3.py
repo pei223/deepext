@@ -2,6 +2,7 @@ import torch.optim as optim
 import torch
 import numpy as np
 from torch import nn
+from torch.nn import functional as F
 from ...base import ClassificationModel
 from .mobilenetv3_lib.model import MobileNetV3 as MobileNetV3lib
 from ....utils.tensor_util import try_cuda
@@ -10,17 +11,15 @@ __all__ = ['MobileNetV3']
 
 
 class MobileNetV3(ClassificationModel):
-    def __init__(self, num_classes, lr=1e-4, mode='small', pretrained=True):
+    def __init__(self, num_classes, lr=1e-4, mode='small', pretrained=True, multi_class=False):
         super().__init__()
         self._num_classes = num_classes
         self._mode = mode
         self._model = MobileNetV3lib(num_classes=num_classes, mode=mode)
         # state_dict = torch.load('mobilenetv3_small_67.4.pth.tar')
         self._optimizer = optim.Adam(self._model.parameters(), lr=lr)
-        self._criterion = torch.nn.CrossEntropyLoss()
-        if torch.cuda.is_available():
-            self._model.cuda()
-            self._criterion.cuda()
+        self._multi_class = multi_class
+        self._model = try_cuda(self._model)
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
         """
@@ -33,7 +32,12 @@ class MobileNetV3(ClassificationModel):
 
         # compute output
         output = self._model(train_x)
-        loss = self._criterion(output, teacher)
+        if not self._multi_class:
+            output = F.softmax(output, dim=1)
+            loss = F.cross_entropy(output, teacher, reduction="mean")
+        else:
+            output = F.sigmoid(output)
+            loss = F.binary_cross_entropy(output, teacher, reduction="mean")
         # compute gradient and do SGD step
         self._optimizer.zero_grad()
         loss.backward()

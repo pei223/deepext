@@ -14,7 +14,7 @@ from deepext.metrics import DetailMetricKey
 from deepext.data.dataset import VOCAnnotationTransform, AdjustDetectionTensorCollator
 from deepext.utils import *
 
-from dataset_info import DATASET_INFO
+from dataset_info import DETECTION_DATASET_INFO
 
 VALID_MODEL_KEYS = ["efficientdet"]
 
@@ -71,7 +71,7 @@ def build_data_loader(args, train_dataset: Dataset, test_dataset: Dataset) -> Tu
 parser = argparse.ArgumentParser(description='Pytorch Image detection training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DATASET_INFO.keys())}')
+parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DETECTION_DATASET_INFO.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
@@ -85,9 +85,9 @@ parser.add_argument('--image_size', type=int, default=256, help="Image size(defa
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    dataset_info = DATASET_INFO.get(args.dataset)
+    dataset_info = DETECTION_DATASET_INFO.get(args.dataset)
     if dataset_info is None:
-        raise ValueError(f"Invalid dataset name - {args.dataset}.  Required [{list(DATASET_INFO.keys())}]")
+        raise ValueError(f"Invalid dataset name - {args.dataset}.  Required [{list(DETECTION_DATASET_INFO.keys())}]")
 
     label_names = dataset_info["label_names"]
     class_index_dict = {}

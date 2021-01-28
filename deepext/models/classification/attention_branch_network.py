@@ -14,8 +14,8 @@ __all__ = ['AttentionBranchNetwork']
 
 
 class AttentionBranchNetwork(AttentionClassificationModel):
-    def __init__(self, n_classes: int, pretrained=True,
-                 backbone: BackBoneKey = BackBoneKey.RESNET_50, n_blocks=3, lr=1e-4):
+    def __init__(self, n_classes: int, pretrained=True, backbone: BackBoneKey = BackBoneKey.RESNET_50, n_blocks=3,
+                 lr=1e-4, multi_class=False):
         super().__init__()
         self._backbone = backbone
         self._model = try_cuda(
@@ -23,6 +23,7 @@ class AttentionBranchNetwork(AttentionClassificationModel):
         self._n_classes = n_classes
         self._n_blocks = n_blocks
         self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
+        self._multi_class = multi_class
 
     def train_batch(self, inputs: torch.Tensor, teachers: torch.Tensor) -> float:
         """
@@ -41,8 +42,16 @@ class AttentionBranchNetwork(AttentionClassificationModel):
     def _calc_loss(self, output, teacher):
         teacher = teacher.long()
         perception_pred, attention_pred, attention_map = output
-        return F.cross_entropy(perception_pred, teacher, reduction="mean") + F.cross_entropy(attention_pred, teacher,
-                                                                                             reduction="mean")
+        if not self._multi_class:
+            perception_pred = F.softmax(perception_pred, dim=1)
+            attention_pred = F.softmax(attention_pred, dim=1)
+            return F.cross_entropy(perception_pred, teacher, reduction="mean") + \
+                   F.cross_entropy(attention_pred, teacher, reduction="mean")
+        else:
+            perception_pred = F.sigmoid(perception_pred)
+            attention_pred = F.sigmoid(attention_pred)
+            return F.binary_cross_entropy(perception_pred, teacher, reduction="mean") + F.binary_cross_entropy(
+                attention_pred, teacher, reduction="mean")
 
     def predict(self, x):
         self._model.eval()

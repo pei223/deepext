@@ -13,7 +13,7 @@ from deepext.models.base import ClassificationModel, AttentionClassificationMode
 from deepext.models.classification import EfficientNet, AttentionBranchNetwork
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateAttentionMapCallback
-from deepext.data.transforms import AlbumentationsImageWrapperTransform
+from deepext.data.transforms import AlbumentationsClsWrapperTransform
 from deepext.metrics.classification import *
 from deepext.utils import *
 from deepext.utils.dataset_util import create_label_list_and_dict
@@ -45,7 +45,7 @@ lr_scheduler = CosineDecayScheduler(max_lr=lr, max_epochs=epoch, warmup_epochs=0
 ignore_indices = [255, ]
 
 # TODO Data augmentation
-train_transforms = AlbumentationsImageWrapperTransform(A.Compose([
+train_transforms = AlbumentationsClsWrapperTransform(A.Compose([
     A.HorizontalFlip(),
     A.RandomResizedCrop(width=width, height=height, scale=(0.5, 2.0)),
     A.CoarseDropout(max_height=int(height / 5), max_width=int(width / 5)),
@@ -53,7 +53,7 @@ train_transforms = AlbumentationsImageWrapperTransform(A.Compose([
     ToTensorV2(),
 ]))
 
-test_transforms = AlbumentationsImageWrapperTransform(A.Compose([
+test_transforms = AlbumentationsClsWrapperTransform(A.Compose([
     A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))

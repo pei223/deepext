@@ -1,7 +1,8 @@
 from .backbone_key import BackBoneKey
-from .block import *
-from .basic import *
+from .block import ResidualBlock, UpSamplingBlock
+from .basic import Conv2DBatchNormRelu, BottleNeck, BottleNeckIdentity, GlobalAveragePooling
 from torch.nn import functional as F
+import torch.nn as nn
 import torchvision
 
 __all__ = ['FeatureDecoder', 'FeatureMapBackBone', 'create_backbone', 'ClassifierHead',
@@ -104,8 +105,7 @@ class ClassifierHead(nn.Module):
 
     def forward(self, x):
         y = self.model(x)
-        y = y.view(y.shape[0], -1)  # (Batch size, class num)
-        return F.softmax(y, dim=1)
+        return y.view(y.shape[0], -1)  # (Batch size, class num)
 
 
 class AttentionClassifierBranch(nn.Module):

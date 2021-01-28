@@ -7,7 +7,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 from dotenv import load_dotenv
 
-from deepext.data.transforms import AlbumentationsImageWrapperTransform
+from deepext.data.transforms import AlbumentationsClsWrapperTransform
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
 from deepext.models.segmentation import CustomShelfNet
@@ -25,7 +25,7 @@ n_classes = int(os.environ.get("N_CLASSES"))
 if not Path(result_dir_path).exists():
     Path(result_dir_path).mkdir()
 
-transforms = AlbumentationsImageWrapperTransform(A.Compose([
+transforms = AlbumentationsClsWrapperTransform(A.Compose([
     A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))

@@ -1,6 +1,7 @@
 import torch.optim as optim
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
 
 from ....models.base.classification_model import ClassificationModel
 from ....utils.tensor_util import try_cuda
@@ -10,7 +11,8 @@ __all__ = ['EfficientNet']
 
 
 class EfficientNet(ClassificationModel):
-    def __init__(self, num_classes, network='efficientnet-b0', lr=0.1, momentum=0.9, weight_decay=1e-4):
+    def __init__(self, num_classes, network='efficientnet-b0', lr=0.1, momentum=0.9, weight_decay=1e-4,
+                 multi_class=False):
         super().__init__()
         self._num_classes = num_classes
         self._model = EfficientNetPredictor.from_name(network, override_params={'num_classes': self._num_classes})
@@ -19,10 +21,8 @@ class EfficientNet(ClassificationModel):
             self._model.parameters(), lr,
             momentum=momentum,
             weight_decay=weight_decay)
-        self._criterion = torch.nn.CrossEntropyLoss()
-        if torch.cuda.is_available():
-            self._model.cuda()
-            self._criterion.cuda()
+        self._multi_class = multi_class
+        self._model = try_cuda(self._model)
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
         """
@@ -35,7 +35,12 @@ class EfficientNet(ClassificationModel):
 
         # compute output
         output = self._model(train_x)
-        loss = self._criterion(output, teacher)
+        if not self._multi_class:
+            output = F.softmax(output, dim=1)
+            loss = F.cross_entropy(output, teacher, reduction="mean")
+        else:
+            output = F.sigmoid(output)
+            loss = F.binary_cross_entropy(output, teacher, reduction="mean")
         # compute gradient and do SGD step
         self._optimizer.zero_grad()
         loss.backward()
@@ -50,7 +55,7 @@ class EfficientNet(ClassificationModel):
         self._model.eval()
         with torch.no_grad():
             inputs = try_cuda(inputs).float()
-            output = nn.Softmax(dim=1)(self._model(inputs))
+            output = self._model(inputs)
             pred_ids = output.cpu().numpy()
         return pred_ids
 

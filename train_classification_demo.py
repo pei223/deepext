@@ -5,139 +5,136 @@ import torchvision
 from torch.utils.data import DataLoader, Dataset
 
 from deepext.layers.backbone_key import BackBoneKey
-from deepext.models.classification import EfficientNet, MobileNetV3, \
-    AttentionBranchNetwork
-from deepext.data.transforms import AlbumentationsImageWrapperTransform
+from deepext.models.base import ClassificationModel
+from deepext.models.classification import *
+from deepext.data.transforms import AlbumentationsOnlyImageWrapperTransform
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import GenerateAttentionMapCallback, ModelCheckout, CSVClassificationResultCallback
 from deepext.metrics.classification import *
 from deepext.metrics import DetailMetricKey
 from deepext.utils import *
 
-from util import DataSetSetting
+from dataset_info import CLASSIFICATION_DATASET_INFO
+
+VALID_MODEL_KEYS = ["efficientnet", "mobilenet", "abn", "custommodel"]
 
 
 # NOTE モデル・データセットはここを追加
-def build_efficientnet(dataset_setting, args):
-    return EfficientNet(num_classes=dataset_setting.n_classes, lr=args.lr,
-                        network=f"efficientnet-b{args.efficientnet_scale}")
+def build_model(args, n_classes) -> ClassificationModel:
+    if args.model == "efficientnet":
+        return EfficientNet(num_classes=n_classes, lr=args.lr, network=f"efficientnet-b{args.efficientnet_scale}")
+    if args.model == "mobilenet":
+        return MobileNetV3(num_classes=n_classes, lr=args.lr, pretrained=False)
+    if args.model == "abn":
+        return AttentionBranchNetwork(n_classes=n_classes, lr=args.lr, backbone=BackBoneKey.from_val(args.submodel))
+    if args.model == "custommodel":
+        return CustomClassificationNetwork(n_classes=n_classes, lr=args.lr,
+                                           backbone=BackBoneKey.from_val(args.submodel))
+    raise RuntimeError(f"Invalid model name: {args.model}")
 
 
-def build_mobilenet(dataset_setting, args):
-    return MobileNetV3(num_classes=dataset_setting.n_classes, lr=args.lr, pretrained=False)
-
-
-def build_attention_branch_network(dataset_setting, args):
-    return try_cuda(AttentionBranchNetwork(n_classes=dataset_setting.n_classes, lr=args.lr,
-                                           backbone=BackBoneKey.from_val(args.submodel)))
-
-
-def build_stl_dataset(root_dir: str, train_transforms, test_transforms):
-    train_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="train",
-                                               transform=train_transforms)
-    test_dataset = torchvision.datasets.STL10(root=root_dir, download=True, split="test",
-                                              transform=test_transforms)
-    return train_dataset, test_dataset
-
-
-def build_cifar_dataset(root_dir: str, train_transforms, test_transforms):
-    train_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=True,
-                                                 transform=train_transforms)
-    test_dataset = torchvision.datasets.CIFAR10(root=root_dir, download=True, train=False,
-                                                transform=test_transforms)
-    return train_dataset, test_dataset
-
-
-DATASET_DICT = {
-    "stl": DataSetSetting(dataset_type="stl", size=(96, 96), n_classes=10,
-                          label_names=['airplane', 'bird', 'car', 'cat', 'deer', 'dog', 'horse', 'monkey', 'ship',
-                                       'truck'], dataset_build_func=build_stl_dataset),
-    "cifar": DataSetSetting(dataset_type="cifar", size=(32, 32), n_classes=10,
-                            label_names=['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse',
-                                         'ship', 'truck'], dataset_build_func=build_cifar_dataset)
-}
-MODEL_DICT = {
-    "efficientnet": build_efficientnet,
-    "mobilenet": build_mobilenet,
-    "attention_branch_network": build_attention_branch_network
-}
-
-
-def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
-    DataLoader, DataLoader, Dataset, Dataset]:
+def build_transforms(args) -> Tuple[any, any]:
     train_transforms = A.Compose([
         A.HorizontalFlip(p=0.3),
-        A.RandomResizedCrop(setting.size[0], setting.size[1], scale=(0.5, 2.0)),
+        A.RandomResizedCrop(width=args.image_size, height=args.image_size, scale=(0.7, 1.2)),
         A.Rotate((-30, 30), p=0.3),
-        A.CoarseDropout(max_width=24, max_height=24, max_holes=2, p=0.3),
+        A.CoarseDropout(max_width=int(args.image_size / 8), max_height=int(args.image_size / 8), max_holes=3, p=0.3),
         ToTensorV2(),
     ])
-    train_transforms = AlbumentationsImageWrapperTransform(train_transforms)
+    train_transforms = AlbumentationsOnlyImageWrapperTransform(train_transforms)
 
     test_transforms = A.Compose([
-        A.Resize(setting.size[0], setting.size[1]),
+        A.Resize(width=args.image_size, height=args.image_size),
         ToTensorV2(),
     ])
-    test_transforms = AlbumentationsImageWrapperTransform(test_transforms)
-    train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
-    return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
-           DataLoader(test_dataset, batch_size=batch_size, shuffle=True), train_dataset, test_dataset
+    test_transforms = AlbumentationsOnlyImageWrapperTransform(test_transforms)
+    return train_transforms, test_transforms
+
+
+def build_dataset(args, train_transforms, test_transforms) -> Tuple[Dataset, Dataset]:
+    if args.dataset == "stl10":
+        train_dataset = torchvision.datasets.STL10(root=args.dataset_root, download=True, split="train",
+                                                   transform=train_transforms)
+        test_dataset = torchvision.datasets.STL10(root=args.dataset_root, download=True, split="test",
+                                                  transform=test_transforms)
+        return train_dataset, test_dataset
+    if args.dataset == "cifar10":
+        train_dataset = torchvision.datasets.CIFAR10(root=args.dataset_root, download=True, train=True,
+                                                     transform=train_transforms)
+        test_dataset = torchvision.datasets.CIFAR10(root=args.dataset_root, download=True, train=False,
+                                                    transform=test_transforms)
+        return train_dataset, test_dataset
+    raise RuntimeError(f"Invalid dataset name: {args.dataset_root}")
+
+
+def build_data_loader(args, train_dataset: Dataset, test_dataset: Dataset) -> Tuple[DataLoader, DataLoader]:
+    return DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True), \
+           DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
 
 parser = argparse.ArgumentParser(description='Pytorch Image classification training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default="stl", help=f'Dataset type in {list(DATASET_DICT.keys())}')
+parser.add_argument('--dataset', type=str, default="stl10",
+                    help=f'Dataset type in {list(CLASSIFICATION_DATASET_INFO.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
-parser.add_argument('--model', type=str, default="mobilenet", help=f"Model type in {list(MODEL_DICT.keys())}")
+parser.add_argument('--model', type=str, default="mobilenet", help=f"Model type in {VALID_MODEL_KEYS}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--efficientnet_scale', type=int, default=0, help="Number of scale of EfficientNet.")
-parser.add_argument('--image_size', type=int, default=None, help="Image size(default is 256)")
+parser.add_argument('--image_size', type=int, default=96, help="Image size.")
 parser.add_argument('--submodel', type=str, default=None, help=f'Type of submodel(resnet18, resnet34...).')
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     # Fetch dataset.
-    dataset_setting = DATASET_DICT.get(args.dataset)
-    assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
-    if args.image_size:
-        img_size = (args.image_size, args.image_size)
-        dataset_setting.set_size(img_size)
+    dataset_info = CLASSIFICATION_DATASET_INFO.get(args.dataset)
+    if dataset_info is None:
+        raise ValueError(
+            f"Invalid dataset name - {args.dataset}.  Required [{list(CLASSIFICATION_DATASET_INFO.keys())}]")
+
+    label_names = dataset_info["label_names"]
+    class_index_dict = {}
+    for i, label_name in enumerate(label_names):
+        class_index_dict[label_name] = i
+    train_transforms, test_transforms = build_transforms(args)
 
     # Fetch model and load weight.
-    build_model_func = MODEL_DICT.get(args.model)
-    assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
-    model = try_cuda(build_model_func(dataset_setting, args))
+    model = try_cuda(build_model(args, dataset_info["n_classes"]))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
 
-    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
-                                                                                    args.batch_size)
+    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
+    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
+
     # Training setting.
-    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
+    loss_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=3, verbose=True)
+    ep_lr_scheduler = None
+    # loss_lr_scheduler = None
+    # ep_lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
     callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights"),
                  CSVClassificationResultCallback(model=model, per_epoch=args.epoch, dataset=test_dataset,
-                                                 label_names=dataset_setting.label_names,
+                                                 label_names=label_names,
                                                  out_filepath=f"{args.progress_dir}/result.csv")]
     if args.progress_dir:
         if isinstance(model, AttentionBranchNetwork):
             callbacks.append(GenerateAttentionMapCallback(model=model, output_dir=args.progress_dir, per_epoch=5,
                                                           dataset=test_dataset,
-                                                          label_names=dataset_setting.label_names))
-    metric_ls = [ClassificationAccuracyByClasses(dataset_setting.label_names), ]
-    metric_for_graph = ClassificationAccuracyByClasses(dataset_setting.label_names, val_key=DetailMetricKey.KEY_TOTAL)
+                                                          label_names=label_names))
+    metric_ls = [ClassificationAccuracyByClasses(label_names), ]
+    metric_for_graph = ClassificationAccuracyByClasses(label_names, val_key=DetailMetricKey.KEY_TOTAL)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="Accuracy", ignore_epoch=0,
                                                         save_filepath="classification_learning_curve.png")
     # Training.
-    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
-                                                                            test_data_loader=test_dataloader,
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_data_loader,
+                                                                            test_data_loader=test_data_loader,
                                                                             epochs=args.epoch, callbacks=callbacks,
-                                                                            epoch_lr_scheduler_func=lr_scheduler,
+                                                                            epoch_lr_scheduler_func=ep_lr_scheduler,
+                                                                            loss_lr_scheduler=loss_lr_scheduler,
                                                                             metric_for_graph=metric_for_graph,
                                                                             metric_ls=metric_ls,
                                                                             calc_metrics_per_epoch=5)

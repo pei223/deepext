@@ -11,7 +11,7 @@ from deepext.models.base import ClassificationModel
 from deepext.models.classification import AttentionBranchNetwork, MobileNetV3
 from deepext.utils import try_cuda
 from deepext.data.dataset import ImageOnlyDataset
-from deepext.data.transforms import AlbumentationsImageWrapperTransform
+from deepext.data.transforms import AlbumentationsClsWrapperTransform
 from deepext.utils.dataset_util import create_label_list_and_dict
 
 load_dotenv("envs/classification.env")
@@ -25,7 +25,7 @@ n_classes = int(os.environ.get("N_CLASSES"))
 
 label_names, label_dict = create_label_list_and_dict(label_file_path)
 
-transforms = AlbumentationsImageWrapperTransform(A.Compose([
+transforms = AlbumentationsClsWrapperTransform(A.Compose([
     A.Resize(width=width, height=height),
     ToTensorV2(),
 ]))
