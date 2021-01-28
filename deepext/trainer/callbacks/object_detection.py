@@ -58,6 +58,5 @@ class GenerateDetectionImageCallback(ModelCallback):
         if teacher_bboxes is None or len(teacher_bboxes) == 0:
             return image
         for bbox in teacher_bboxes:
-            image = draw_bounding_boxes_with_name_tag(image, [bbox], color=self._teacher_color,
-                                                      text=self._label_names[int(bbox[-1])])
+            image = draw_bounding_boxes_with_name_tag(image, [bbox], color=self._teacher_color, text=None)
         return image

@@ -206,6 +206,7 @@ dmypy.json
 /venv
 
 /temp
+/progress
 /saved_weights
 .env.json
 
