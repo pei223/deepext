@@ -24,8 +24,8 @@ torch/torchvisionはこのサイトに従ってインストール(https://pytorc
 ## 学習
 ### 画像分類
 ```
-python train_classification_demo.py  --model=efficientnet --dataset=stl --dataset_root=<STL10のパス(torchvision.dataset形式)> --progress_dir=<途中経過出力先ディレクトリ>
-python train_classification_demo.py  --model=attention_branch_network --submodel=resnet18 --dataset=stl --dataset_root=<STL10のパス(torchvision.dataset形式)> --progress_dir=<途中経過出力先ディレクトリ>
+python train_classification_demo.py  --model=efficientnet --dataset=stl10 --dataset_root=<STL10のパス(torchvision.dataset形式)> --progress_dir=<途中経過出力先ディレクトリ>
+python train_classification_demo.py  --model=abn --submodel=resnet18 --dataset=stl10 --dataset_root=<STL10のパス(torchvision.dataset形式)> --progress_dir=<途中経過出力先ディレクトリ>
 ```
 
 <br/>
@@ -39,7 +39,7 @@ python train_detection_demo.py --model=efficientdet --dataset=voc2012 --dataset_
 
 ### セグメンテーション
 ```
-python train_segmentation_demo.py --moodel=custom_shelfnet --submodel=resnet18 --dataset=voc2012 --dataset_root=<Pascal VOCデータセット2007のパス(tarファイル)> --progress_dir=<途中経過出力先ディレクトリ> 
+python train_segmentation_demo.py --moodel=shelfnet --submodel=resnet18 --dataset=voc2012 --dataset_root=<Pascal VOCデータセット2007のパス(tarファイル)> --progress_dir=<途中経過出力先ディレクトリ> 
 ```
 
 <br/>
@@ -47,7 +47,7 @@ python train_segmentation_demo.py --moodel=custom_shelfnet --submodel=resnet18 -
 ### カメラを用いたリアルタイム推論
 #### セグメンテーション
 ```
-python camera_demo.py --model=custom_shelfnet --submodel=resnet18 --n_classes=21 --image_size=512 --label_names_path=voc_label_names.txt --load_weight_path=saved_weights\CustomShelfNet_epXXX.pth
+python camera_demo.py --model=shelfnet --submodel=resnet18 --n_classes=21 --image_size=512 --label_names_path=voc_label_names.txt --load_weight_path=saved_weights\ShelfNet_epXXX.pth
 ```
 
 #### 物体検出
@@ -62,7 +62,7 @@ python camera_demo.py --model=mobilenet  --n_classes=10 --image_size=96 --label_
 
 #### 分類(Attention map付き)
 ```
-python camera_demo.py --model=attention_branch_network --submodel=resnet18 --n_classes=10 --image_size=96 --label_names_path=stl_label_names.txt --load_weight_path=saved_weights\AttentionBranchNetwork_epXXX.pth
+python camera_demo.py --model=abn --submodel=resnet18 --n_classes=10 --image_size=96 --label_names_path=stl_label_names.txt --load_weight_path=saved_weights\AttentionBranchNetwork_epXXX.pth
 ```
 
 <br/><br/>

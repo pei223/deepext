@@ -10,7 +10,7 @@ from deepext.layers.loss import SegmentationFocalLoss
 from deepext.data.dataset import IndexImageDataset, DatasetSplitter
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
-from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
+from deepext.models.segmentation import UNet, ResUNet, ShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
@@ -82,7 +82,7 @@ test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 # TODO Model detail params
 voc_focal_loss = SegmentationFocalLoss()
 model: SegmentationModel = try_cuda(
-    CustomShelfNet(n_classes=n_classes, out_size=(height, width), loss_func=voc_focal_loss))
+    ShelfNet(n_classes=n_classes, out_size=(height, width), loss_func=voc_focal_loss))
 if load_weight_path and load_weight_path != "":
     model.load_weight(load_weight_path)
 

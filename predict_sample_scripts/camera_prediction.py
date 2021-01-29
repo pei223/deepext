@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel, DetectionModel, ClassificationModel, AttentionClassificationModel
-from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
+from deepext.models.segmentation import UNet, ResUNet, ShelfNet
 from deepext.models.object_detection import EfficientDetector
 from deepext.models.classification import EfficientNet, AttentionBranchNetwork, AttentionBranchNetwork, \
     MobileNetV3

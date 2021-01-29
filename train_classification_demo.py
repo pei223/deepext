@@ -101,15 +101,16 @@ if __name__ == "__main__":
     class_index_dict = {}
     for i, label_name in enumerate(label_names):
         class_index_dict[label_name] = i
+
+    # Fetch dataset.
     train_transforms, test_transforms = build_transforms(args)
+    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
+    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
 
     # Fetch model and load weight.
     model = try_cuda(build_model(args, dataset_info["n_classes"]))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
-
-    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
-    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
 
     # Training setting.
     loss_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=3, verbose=True)

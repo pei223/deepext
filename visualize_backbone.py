@@ -12,7 +12,7 @@ from deepext.utils import combine_heatmap, pil_to_cv
 
 backbone_key = BackBoneKey.RESNET_50
 
-origin_image = cv2.imread("C:/Users/ippei/Downloads/living-room-1872192_1280.jpg")
+origin_image = cv2.imread("<Image file path>")
 origin_image = cv2.cvtColor(origin_image, cv2.COLOR_BGR2RGB)
 
 image_size = (512, 512)

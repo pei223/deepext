@@ -2,7 +2,7 @@ import argparse
 
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel, DetectionModel, ClassificationModel, AttentionClassificationModel
-from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
+from deepext.models.segmentation import UNet, ResUNet, ShelfNet
 from deepext.models.object_detection import EfficientDetector
 from deepext.models.classification import EfficientNet, AttentionBranchNetwork, AttentionBranchNetwork, \
     MobileNetV3
@@ -18,8 +18,8 @@ def build_unet(args):
 
 
 def build_shelfnet(args):
-    return CustomShelfNet(n_classes=args.n_classes, out_size=args.image_size,
-                          backbone=BackBoneKey.from_val(args.submodel))
+    return ShelfNet(n_classes=args.n_classes, out_size=args.image_size,
+                    backbone=BackBoneKey.from_val(args.submodel))
 
 
 def build_efficientdet(args):
@@ -43,7 +43,7 @@ def build_efficientnet(args):
 # TODO ここ他のTrainスクリプトと共通化したい
 MODEL_BUILD_DICT = {
     "unet": build_unet,
-    "custom_shelfnet": build_shelfnet,
+    "shelfnet": build_shelfnet,
     "efficientdet": build_efficientdet,
     "efficientnet": build_efficientnet,
     "mobilenet": build_mobilenet,

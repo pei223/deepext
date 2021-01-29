@@ -71,7 +71,8 @@ def build_data_loader(args, train_dataset: Dataset, test_dataset: Dataset) -> Tu
 parser = argparse.ArgumentParser(description='Pytorch Image detection training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DETECTION_DATASET_INFO.keys())}')
+parser.add_argument('--dataset', type=str, default="voc2012",
+                    help=f'Dataset type in {list(DETECTION_DATASET_INFO.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
@@ -94,15 +95,15 @@ if __name__ == "__main__":
     for i, label_name in enumerate(label_names):
         class_index_dict[label_name] = i
 
+    # Fetch dataset.
     train_transforms, test_transforms = build_transforms(args, class_index_dict)
+    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
+    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
 
     # Fetch model and load weight.
     model = try_cuda(build_model(args, dataset_info["n_classes"]))
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
-
-    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
-    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
 
     # Training setting.
     # epoch_lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)

@@ -7,105 +7,94 @@ from albumentations.pytorch.transforms import ToTensorV2
 from deepext.layers.loss import SegmentationFocalLoss
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
-from deepext.models.segmentation import UNet, ResUNet, CustomShelfNet
+from deepext.models.segmentation import UNet, ResUNet, ShelfNet
 from deepext.trainer import Trainer, LearningCurveVisualizer, CosineDecayScheduler
 from deepext.trainer.callbacks import ModelCheckout, GenerateSegmentationImageCallback
 from deepext.data.transforms import AlbumentationsSegmentationWrapperTransform
 from deepext.metrics.segmentation import *
 from deepext.utils import *
+from dataset_info import SEGMENTATION_DATASET_INFO
 
-from util import DataSetSetting
-
-voc_focal_loss = SegmentationFocalLoss()
-
-
-def build_unet(dataset_setting, args):
-    loss_func = voc_focal_loss if args.dataset in ["voc2007", "voc2012"] else None
-    if args.submodel is None:
-        return UNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=args.lr, loss_func=loss_func)
-    if args.submodel == "resnet":
-        return ResUNet(n_input_channels=3, n_output_channels=dataset_setting.n_classes, lr=args.lr, loss_func=loss_func)
-    assert f"Invalid sub model type: {args.submodel}.  {args.model} Model require resnet or none."
+loss_func = SegmentationFocalLoss()
+loss_func = None
+VALID_MODEL_KEYS = ["unet", "shelfnet"]
 
 
-def build_custom_shelfnet(dataset_setting, args):
-    loss_func = voc_focal_loss if args.dataset in ["voc2007", "voc2012"] else None
-    return CustomShelfNet(n_classes=dataset_setting.n_classes, lr=args.lr, out_size=dataset_setting.size,
-                          loss_func=loss_func, backbone=BackBoneKey.from_val(args.submodel), backbone_pretrained=True)
+def build_model(args, n_classes: int) -> SegmentationModel:
+    if args.model == "unet":
+        if args.submodel is None:
+            return UNet(n_input_channels=3, n_output_channels=n_classes, lr=args.lr, loss_func=loss_func)
+        if args.submodel == "resnet":
+            return ResUNet(n_input_channels=3, n_output_channels=n_classes, lr=args.lr, loss_func=loss_func)
+        assert f"Invalid sub model type: {args.submodel}.  {args.model} Model require resnet or none."
+
+    if args.model == "shelfnet":
+        return ShelfNet(n_classes=n_classes, lr=args.lr, out_size=(args.image_size, args.image_size),
+                        loss_func=loss_func, backbone=BackBoneKey.from_val(args.submodel), backbone_pretrained=True)
+    raise RuntimeError(f"Invalid model name: {args.model}")
 
 
-def build_voc_dataset(year: str, root_dir: str, train_transforms, test_transforms):
-    train_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year=year,
-                                                         image_set='train', transforms=train_transforms)
-    test_dataset = torchvision.datasets.VOCSegmentation(root=root_dir, download=True, year=year,
-                                                        image_set='trainval', transforms=test_transforms)
-    return train_dataset, test_dataset
-
-
-def build_cityscape_dataset(root_dir: str, train_transforms, test_transforms):
-    train_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="train", target_type='semantic',
-                                                    transforms=train_transforms)
-    test_dataset = torchvision.datasets.Cityscapes(root=root_dir, split="test", target_type='semantic',
-                                                   transforms=test_transforms)
-    return train_dataset, test_dataset
-
-
-voc_classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
-               "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
-DATASET_DICT = {
-    "voc2012": DataSetSetting(dataset_type="voc2012", size=(256, 256), n_classes=21, label_names=voc_classes,
-                              dataset_build_func=lambda root_dir, train_transforms, test_transforms:
-                              build_voc_dataset("2012", root_dir, train_transforms, test_transforms)),
-    "voc2007": DataSetSetting(dataset_type="voc2007", size=(256, 256), n_classes=21, label_names=voc_classes,
-                              dataset_build_func=lambda root_dir, train_transforms, test_transforms:
-                              build_voc_dataset("2007", root_dir, train_transforms, test_transforms)),
-    "cityscape": DataSetSetting(dataset_type="cityscape", size=(256, 512), n_classes=34,
-                                label_names=['ego vehicle', 'rectification', 'out of roi', 'static', 'dynamic',
-                                             'ground', 'road', 'sidewalk', 'parking', 'rail track', 'building',
-                                             'wall', 'fence', 'guard rail', 'bridge', 'tunnel', 'pole',
-                                             'polegroup', 'traffic light', 'traffic sign', 'vegetation',
-                                             'terrain', 'sky', 'person', 'rider', 'car', 'truck', 'bus',
-                                             'caravan', 'trailer', 'train', 'motorcycle', 'bicycle',
-                                             'license plate'], dataset_build_func=build_cityscape_dataset)
-}
-MODEL_DICT = {
-    "unet": build_unet,
-    "custom_shelfnet": build_custom_shelfnet,
-}
-
-
-def get_dataloader(setting: DataSetSetting, root_dir: str, batch_size: int) -> Tuple[
-    DataLoader, DataLoader, Dataset, Dataset]:
+def build_transforms(args, n_classes):
     train_transforms = A.Compose([
         A.HorizontalFlip(),
-        A.RandomResizedCrop(dataset_setting.size[0], dataset_setting.size[1], scale=(0.5, 2.0)),
-        A.CoarseDropout(max_height=int(setting.size[1] / 5), max_width=int(setting.size[0] / 5)),
-        A.RandomBrightnessContrast(),
+        A.RandomResizedCrop(width=args.image_size, height=args.image_size, scale=(0.7, 1.2)),
+        A.CoarseDropout(max_height=int(args.image_size / 5), max_width=int(args.image_size / 5)),
+        A.OneOf([
+            A.RandomBrightnessContrast(),
+            A.RandomGamma(),
+            A.Blur(blur_limit=5),
+        ]),
         ToTensorV2(),
     ])
-    train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=dataset_setting.n_classes,
+    train_transforms = AlbumentationsSegmentationWrapperTransform(train_transforms, class_num=n_classes,
                                                                   ignore_indices=[255, ])
     test_transforms = A.Compose([
-        A.Resize(dataset_setting.size[0], dataset_setting.size[1]),
+        A.Resize(width=args.image_size, height=args.image_size),
         ToTensorV2(),
     ])
-    test_transforms = AlbumentationsSegmentationWrapperTransform(test_transforms, class_num=dataset_setting.n_classes,
+    test_transforms = AlbumentationsSegmentationWrapperTransform(test_transforms, class_num=n_classes,
                                                                  ignore_indices=[255, ])
+    return train_transforms, test_transforms
 
-    train_dataset, test_dataset = setting.dataset_build_func(root_dir, train_transforms, test_transforms)
-    return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
-           DataLoader(test_dataset, batch_size=batch_size, shuffle=True), train_dataset, test_dataset
+
+def build_dataset(args, train_transforms, test_transforms) -> Tuple[Dataset, Dataset]:
+    if args.dataset == "voc2012":
+        train_dataset = torchvision.datasets.VOCSegmentation(root=args.dataset_root, download=True, year="2012",
+                                                             image_set='train', transforms=train_transforms)
+        test_dataset = torchvision.datasets.VOCSegmentation(root=args.dataset_root, download=True, year="2012",
+                                                            image_set='trainval', transforms=test_transforms)
+        return train_dataset, test_dataset
+    if args.dataset == "voc2007":
+        train_dataset = torchvision.datasets.VOCSegmentation(root=args.dataset_root, download=True, year="2007",
+                                                             image_set='train', transforms=train_transforms)
+        test_dataset = torchvision.datasets.VOCSegmentation(root=args.dataset_root, download=True, year="2007",
+                                                            image_set='trainval', transforms=test_transforms)
+        return train_dataset, test_dataset
+    if args.dataset == "cityscape":
+        train_dataset = torchvision.datasets.Cityscapes(root=args.dataset_root, split="train", target_type='semantic',
+                                                        transforms=train_transforms)
+        test_dataset = torchvision.datasets.Cityscapes(root=args.dataset_root, split="test", target_type='semantic',
+                                                       transforms=test_transforms)
+        return train_dataset, test_dataset
+
+    raise RuntimeError(f"Invalid dataset name: {args.dataset_root}")
+
+
+def build_data_loader(args, train_dataset: Dataset, test_dataset: Dataset) -> Tuple[DataLoader, DataLoader]:
+    return DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=4), \
+           DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=4)
 
 
 parser = argparse.ArgumentParser(description='Pytorch Image segmentation training.')
 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-parser.add_argument('--dataset', type=str, default="voc2012", help=f'Dataset type in {list(DATASET_DICT.keys())}')
+parser.add_argument('--dataset', type=str, default="voc2012",
+                    help=f'Dataset type in {list(SEGMENTATION_DATASET_INFO.keys())}')
 parser.add_argument('--epoch', type=int, default=100, help='Number of epochs')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
 parser.add_argument('--dataset_root', type=str, required=True, help='Dataset folder path')
 parser.add_argument('--progress_dir', type=str, default=None, help='Directory for saving progress')
-parser.add_argument('--model', type=str, default="custom_shelfnet", help=f"Model type in {list(MODEL_DICT.keys())}")
+parser.add_argument('--model', type=str, default="shelfnet", help=f"Model type in {VALID_MODEL_KEYS}")
 parser.add_argument('--load_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--save_weight_path', type=str, default=None, help="Saved weight path")
 parser.add_argument('--image_size', type=int, default=256, help="Image size(default is 256)")
@@ -114,39 +103,47 @@ parser.add_argument('--submodel', type=str, default=None, help=f'Type of sub mod
 if __name__ == "__main__":
     args = parser.parse_args()
 
+    dataset_info = SEGMENTATION_DATASET_INFO.get(args.dataset)
+    if dataset_info is None:
+        raise ValueError(f"Invalid dataset name - {args.dataset}.  Required [{list(SEGMENTATION_DATASET_INFO.keys())}]")
+
+    label_names = dataset_info["label_names"]
+    class_index_dict = {}
+    for i, label_name in enumerate(label_names):
+        class_index_dict[label_name] = i
+
     # Fetch dataset.
-    dataset_setting = DATASET_DICT.get(args.dataset)
-    assert dataset_setting is not None, f"Invalid dataset type.  Valid dataset is {list(DATASET_DICT.keys())}"
-    img_size = (args.image_size, args.image_size)
-    dataset_setting.set_size(img_size)
+    train_transforms, test_transforms = build_transforms(args, dataset_info["n_classes"] + 1)
+    train_dataset, test_dataset = build_dataset(args, train_transforms, test_transforms)
+    train_data_loader, test_data_loader = build_data_loader(args, train_dataset, test_dataset)
 
     # Fetch model and load weight.
-    build_model_func = MODEL_DICT.get(args.model)
-    assert build_model_func is not None, f"Invalid model type. Valid models is {list(MODEL_DICT.keys())}"
-    model: SegmentationModel = try_cuda(build_model_func(dataset_setting, args))
+    model = try_cuda(build_model(args, dataset_info["n_classes"] + 1))  # include background class
     if args.load_weight_path:
         model.load_weight(args.load_weight_path)
 
-    train_dataloader, test_dataloader, train_dataset, test_dataset = get_dataloader(dataset_setting, args.dataset_root,
-                                                                                    args.batch_size)
     # Training setting.
-    lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
+    epoch_lr_scheduler = CosineDecayScheduler(max_lr=args.lr, max_epochs=args.epoch, warmup_epochs=0)
+    loss_lr_scheduler = None
+    # loss_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(model.get_optimizer(), patience=5, verbose=True)
+    # epoch_lr_scheduler = None
 
     callbacks = [ModelCheckout(per_epoch=int(args.epoch / 5), model=model, our_dir="saved_weights")]
     if args.progress_dir:
         callbacks.append(GenerateSegmentationImageCallback(output_dir=args.progress_dir, per_epoch=5, model=model,
                                                            dataset=test_dataset))
-    metric_ls = [SegmentationIoUByClasses(dataset_setting.label_names),
-                 SegmentationRecallPrecision(dataset_setting.label_names)]
-    metric_for_graph = SegmentationIoUByClasses(dataset_setting.label_names, val_key=DetailMetricKey.KEY_AVERAGE)
+    metric_ls = [SegmentationIoUByClasses(label_names),
+                 SegmentationRecallPrecision(label_names)]
+    metric_for_graph = SegmentationIoUByClasses(label_names, val_key=DetailMetricKey.KEY_AVERAGE)
     learning_curve_visualizer = LearningCurveVisualizer(metric_name="mIoU", ignore_epoch=0,
                                                         save_filepath="segmentation_learning_curve.png")
 
     # Training.
-    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_dataloader,
-                                                                            test_data_loader=test_dataloader,
+    Trainer(model, learning_curve_visualizer=learning_curve_visualizer).fit(train_data_loader=train_data_loader,
+                                                                            test_data_loader=test_data_loader,
                                                                             epochs=args.epoch, callbacks=callbacks,
-                                                                            epoch_lr_scheduler_func=lr_scheduler,
+                                                                            loss_lr_scheduler=loss_lr_scheduler,
+                                                                            epoch_lr_scheduler_func=epoch_lr_scheduler,
                                                                             metric_for_graph=metric_for_graph,
                                                                             metric_ls=metric_ls,
-                                                                            calc_metrics_per_epoch=5)
+                                                                            calc_metrics_per_epoch=10)

@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from deepext.data.transforms import AlbumentationsClsWrapperTransform
 from deepext.layers.backbone_key import BackBoneKey
 from deepext.models.base import SegmentationModel
-from deepext.models.segmentation import CustomShelfNet
+from deepext.models.segmentation import ShelfNet
 from deepext.utils import try_cuda
 from deepext.data.dataset import ImageOnlyDataset
 
@@ -35,7 +35,7 @@ dataset = ImageOnlyDataset(image_dir=images_dir_path, image_transform=transforms
 # TODO Choose model, parameters.
 print("Loading model...")
 model: SegmentationModel = try_cuda(
-    CustomShelfNet(n_classes=n_classes, out_size=(height, width), backbone=BackBoneKey.RESNET_18))
+    ShelfNet(n_classes=n_classes, out_size=(height, width), backbone=BackBoneKey.RESNET_18))
 model.load_weight(weight_path)
 print("Model loaded")
 

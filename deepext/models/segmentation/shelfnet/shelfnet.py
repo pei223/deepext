@@ -10,10 +10,10 @@ from ....layers.loss import *
 from ....layers.basic import *
 from ....layers.subnetwork import *
 
-__all__ = ['CustomShelfNet']
+__all__ = ['ShelfNet']
 
 
-class CustomShelfNet(SegmentationModel):
+class ShelfNet(SegmentationModel):
     def __init__(self, n_classes: int, out_size: Tuple[int, int], lr=1e-3, loss_func: nn.Module = None,
                  backbone: BackBoneKey = BackBoneKey.RESNET_18, backbone_pretrained=True):
         """
@@ -36,7 +36,7 @@ class CustomShelfNet(SegmentationModel):
             self._model: nn.Module = try_cuda(
                 ShelfNetModel(n_classes=n_classes, out_size=out_size, backbone=backbone,
                               pretrained=backbone_pretrained))
-        self._optimizer = torch.optim.Adam(lr=lr, params=self._model.parameters())
+        self._optimizer = torch.optim.AdamW(lr=lr, params=self._model.parameters())
         self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:

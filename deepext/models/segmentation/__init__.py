@@ -1,2 +1,2 @@
-from .unet import *
-from .custom_shelfnet import *
+from .unet import UNet, ResUNet
+from .shelfnet import ShelfNet
