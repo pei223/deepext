@@ -79,6 +79,9 @@ class CustomClassificationNetwork(ClassificationModel):
     def get_model(self) -> nn.Module:
         return self._model
 
+    def generate_model_name(self, suffix: str = "") -> str:
+        return super().generate_model_name(f'_{self._backbone.value}{suffix}')
+
 
 class CustomClassificationModel(nn.Module):
     def __init__(self, n_classes: int, pretrained=True,

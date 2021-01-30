@@ -47,7 +47,7 @@ MODEL_BUILD_DICT = {
     "efficientdet": build_efficientdet,
     "efficientnet": build_efficientnet,
     "mobilenet": build_mobilenet,
-    "attention_branch_network": build_attention_branch_network,
+    "abn": build_attention_branch_network,
 }
 
 parser = argparse.ArgumentParser(description='Pytorch Image detection training.')

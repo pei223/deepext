@@ -131,3 +131,6 @@ class EfficientDetector(DetectionModel):
 
     def get_model(self) -> nn.Module:
         return self._model
+
+    def generate_model_name(self, suffix: str = "") -> str:
+        return f"{self._network}{suffix}"

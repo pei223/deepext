@@ -20,4 +20,4 @@ class ModelCheckout(ModelCallback):
     def __call__(self, epoch: int):
         if (epoch + 1) % self._per_epoch != 0:
             return
-        self._model.save_weight(str(self._out_dir.joinpath(f"{self._model.__class__.__name__}_ep{epoch + 1}.pth")))
+        self._model.save_weight(str(self._out_dir.joinpath(self._model.generate_model_name(f"_ep{epoch + 1}.pth"))))

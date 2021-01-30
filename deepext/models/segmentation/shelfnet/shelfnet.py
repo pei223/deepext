@@ -38,6 +38,7 @@ class ShelfNet(SegmentationModel):
                               pretrained=backbone_pretrained))
         self._optimizer = torch.optim.AdamW(lr=lr, params=self._model.parameters())
         self._loss_func = loss_func if loss_func else SegmentationTypedLoss(loss_type="ce")
+        self._backbone = backbone
 
     def train_batch(self, train_x: torch.Tensor, teacher: torch.Tensor) -> float:
         self._model.train()
@@ -84,6 +85,9 @@ class ShelfNet(SegmentationModel):
 
     def get_model_config(self):
         return {}
+
+    def generate_model_name(self, suffix: str = "") -> str:
+        return super().generate_model_name(f'_{self._backbone.value}{suffix}')
 
 
 class ShelfNetModel(nn.Module):

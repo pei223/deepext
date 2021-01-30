@@ -67,3 +67,6 @@ class BaseModel(metaclass=ABCMeta):
         # scripted_model = torch.jit.script(torch_model)
         # opt_model = mobile_optimizer.optimize_for_mobile(scripted_model)
         # torch.jit.save(opt_model, out_filepath, _use_new_zipfile_serialization=False)
+
+    def generate_model_name(self, suffix: str = "") -> str:
+        return f"{self.__class__.__name__}{suffix}"
